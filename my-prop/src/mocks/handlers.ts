@@ -1,7 +1,9 @@
 import { campaignHandlers } from "./handlers/campaigns"
+import { domainHandlers } from "./handlers/domains"
 import { leadHandlers } from "./handlers/leads"
 import { teamHandlers } from "./handlers/team"
 import { getCampaignsMock } from "@/api/generated/campaigns/campaigns.msw"
+import { getDomainsMock } from "@/api/generated/domains/domains.msw"
 import { getLeadsMock } from "@/api/generated/leads/leads.msw"
 import { getTeamMock } from "@/api/generated/team/team.msw"
 
@@ -11,7 +13,9 @@ export const handlers = [
   ...leadHandlers,
   ...campaignHandlers,
   ...teamHandlers,
+  ...domainHandlers,
   ...getLeadsMock(),
   ...getCampaignsMock(),
   ...getTeamMock(),
+  ...getDomainsMock(),
 ]

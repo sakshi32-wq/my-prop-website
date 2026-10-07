@@ -9,7 +9,13 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { HOSTNAME_RE, copyToClipboard, useSimulatedRequest } from "./utils"
+import { DNS_RECORD_LABELS } from "./domains-data"
+import { HOSTNAME_RE, copyToClipboard } from "./utils"
+import type { Domain } from "./domains-data"
+import {
+  useCreateDomain,
+  useVerifyDomain,
+} from "@/api/generated/domains/domains"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,25 +48,6 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { WEBSITES } from "@/lib/mock-data"
 
-export type NewDomain = { domain: string; website: string }
-
-const DNS_RECORDS = [
-  {
-    label: "A Record",
-    type: "A",
-    name: "@",
-    value: "76.76.21.21",
-    copied: "IP address copied",
-  },
-  {
-    label: "CNAME Record",
-    type: "CNAME",
-    name: "www",
-    value: "cname.myprop.live",
-    copied: "CNAME copied",
-  },
-]
-
 const REGISTRAR_GUIDES = [
   {
     name: "GoDaddy",
@@ -80,12 +67,10 @@ export function AddDomainDialog({
   open,
   onOpenChange,
   existingDomains,
-  onAdd,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   existingDomains: Array<string>
-  onAdd: (domain: NewDomain) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,10 +78,7 @@ export function AddDomainDialog({
         {/* Remounts on every open, so the wizard always starts at step 1. */}
         <AddDomainWizard
           existingDomains={existingDomains}
-          onDone={(domain) => {
-            onAdd(domain)
-            onOpenChange(false)
-          }}
+          onDone={() => onOpenChange(false)}
         />
       </DialogContent>
     </Dialog>
@@ -118,13 +100,37 @@ function AddDomainWizard({
   onDone,
 }: {
   existingDomains: Array<string>
-  onDone: (domain: NewDomain) => void
+  onDone: () => void
 }) {
-  const [step, setStep] = useState<"details" | "dns">("details")
+  // Set once the domain is created; the DNS step shows its records.
+  const [created, setCreated] = useState<Domain | null>(null)
   const [domainName, setDomainName] = useState("")
   const [websiteId, setWebsiteId] = useState("")
   const [submitted, setSubmitted] = useState(false)
-  const [verifying, verify] = useSimulatedRequest(1500)
+
+  const createDomain = useCreateDomain({
+    mutation: {
+      onSuccess: (domain) => {
+        toast.success(`${domain.domain} added`, {
+          description:
+            "It will become active once your DNS records are verified.",
+        })
+        setCreated(domain)
+      },
+    },
+  })
+  const verifyDomain = useVerifyDomain({
+    mutation: {
+      onSuccess: (domain) => {
+        if (domain.status === "active")
+          toast.success(`${domain.domain} is verified`)
+        else
+          toast.info("DNS records not detected yet", {
+            description: `Propagation for ${domain.domain} can take 24-48 hours. We'll keep checking automatically.`,
+          })
+      },
+    },
+  })
 
   const domain = domainName.trim().toLowerCase()
   const domainError = submitted
@@ -132,24 +138,15 @@ function AddDomainWizard({
     : undefined
   const websiteError =
     submitted && !websiteId ? "Select a website for this domain." : undefined
-  const website = WEBSITES.find((site) => site.id === websiteId)
 
   function handleContinue(event: React.FormEvent) {
     event.preventDefault()
     setSubmitted(true)
     if (validateDomain(domain, existingDomains) || !websiteId) return
-    setStep("dns")
+    createDomain.mutate({ data: { domain, websiteId } })
   }
 
-  function handleVerify() {
-    verify(() =>
-      toast.info("DNS records not detected yet", {
-        description: `Propagation for ${domain} can take 24-48 hours. We'll keep checking automatically.`,
-      })
-    )
-  }
-
-  if (step === "details") {
+  if (!created) {
     return (
       <form noValidate onSubmit={handleContinue} className="contents">
         <DialogHeader>
@@ -225,8 +222,12 @@ function AddDomainWizard({
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit">
-            <PlusIcon data-icon="inline-start" />
+          <Button type="submit" disabled={createDomain.isPending}>
+            {createDomain.isPending ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <PlusIcon data-icon="inline-start" />
+            )}
             Add Domain
           </Button>
         </DialogFooter>
@@ -237,18 +238,20 @@ function AddDomainWizard({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Configure DNS for {domain}</DialogTitle>
+        <DialogTitle>Configure DNS for {created.domain}</DialogTitle>
         <DialogDescription>
           Add these DNS records at your domain registrar (GoDaddy, Namecheap,
-          etc.) to point {domain} to {website?.name}.
+          etc.) to point {created.domain} to {created.websiteName}.
         </DialogDescription>
       </DialogHeader>
       <div className="flex min-w-0 flex-col gap-4">
         <ItemGroup className="gap-3">
-          {DNS_RECORDS.map((record) => (
+          {created.dnsRecords.map((record) => (
             <Item key={record.type} variant="muted">
               <ItemContent className="min-w-0 gap-3">
-                <Badge variant="outline">{record.label}</Badge>
+                <Badge variant="outline">
+                  {DNS_RECORD_LABELS[record.type].label}
+                </Badge>
                 <dl className="grid grid-cols-[auto_auto_1fr] gap-x-6 gap-y-1">
                   <dt className="text-muted-foreground">Type</dt>
                   <dt className="text-muted-foreground">Name</dt>
@@ -265,7 +268,12 @@ function AddDomainWizard({
                   variant="ghost"
                   size="icon-sm"
                   aria-label={`Copy ${record.type} record value`}
-                  onClick={() => copyToClipboard(record.value, record.copied)}
+                  onClick={() =>
+                    copyToClipboard(
+                      record.value,
+                      DNS_RECORD_LABELS[record.type].copied
+                    )
+                  }
                 >
                   <CopyIcon />
                 </Button>
@@ -296,22 +304,19 @@ function AddDomainWizard({
         </Alert>
       </div>
       <DialogFooter>
-        <Button variant="ghost" onClick={() => setStep("details")}>
-          Back
-        </Button>
-        <Button variant="outline" disabled={verifying} onClick={handleVerify}>
-          {verifying ? (
+        <Button
+          variant="outline"
+          disabled={verifyDomain.isPending}
+          onClick={() => verifyDomain.mutate({ domainId: created.id })}
+        >
+          {verifyDomain.isPending ? (
             <Spinner data-icon="inline-start" />
           ) : (
             <CheckCircleIcon data-icon="inline-start" />
           )}
-          {verifying ? "Checking DNS..." : "Verify DNS"}
+          {verifyDomain.isPending ? "Checking DNS..." : "Verify DNS"}
         </Button>
-        <Button
-          onClick={() => onDone({ domain, website: website?.name ?? "" })}
-        >
-          Done
-        </Button>
+        <Button onClick={onDone}>Done</Button>
       </DialogFooter>
     </>
   )

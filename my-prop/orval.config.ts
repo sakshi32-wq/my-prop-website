@@ -56,6 +56,17 @@ export default defineConfig({
                 { query: "getTeamMember", params: ["memberId"] },
               ],
             },
+            {
+              onMutations: ["createDomain"],
+              invalidates: ["listDomains"],
+            },
+            {
+              onMutations: ["deleteDomain", "verifyDomain"],
+              invalidates: [
+                "listDomains",
+                { query: "getDomain", params: ["domainId"] },
+              ],
+            },
           ],
         },
       },

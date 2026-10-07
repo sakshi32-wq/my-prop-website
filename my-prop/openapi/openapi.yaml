@@ -16,6 +16,8 @@ tags:
     description: WhatsApp, Email and SMS marketing campaigns
   - name: team
     description: Workspace members, invitations and roles
+  - name: domains
+    description: Custom domains that point to websites
 
 paths:
   /leads:
@@ -376,6 +378,94 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
+  /domains:
+    get:
+      operationId: listDomains
+      tags: [domains]
+      summary: List custom domains, oldest first
+      responses:
+        "200":
+          description: Domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Domain"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createDomain
+      tags: [domains]
+      summary: Add a domain. It stays pending until its DNS records verify.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainInput"
+      responses:
+        "201":
+          description: The pending domain, with the DNS records to configure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Domain"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /domains/{domainId}:
+    parameters:
+      - $ref: "#/components/parameters/DomainId"
+    get:
+      operationId: getDomain
+      tags: [domains]
+      summary: Get a domain
+      responses:
+        "200":
+          description: The domain
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Domain"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteDomain
+      tags: [domains]
+      summary: Remove a domain
+      responses:
+        "204":
+          description: Removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /domains/{domainId}/verify:
+    parameters:
+      - $ref: "#/components/parameters/DomainId"
+    post:
+      operationId: verifyDomain
+      tags: [domains]
+      summary: Check the domain's DNS records now
+      description: Returns the domain; status becomes active once the records resolve.
+      responses:
+        "200":
+          description: The domain after the check
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Domain"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -383,6 +473,13 @@ components:
       scheme: bearer
 
   parameters:
+    DomainId:
+      name: domainId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     MemberId:
       name: memberId
       in: path
@@ -759,6 +856,59 @@ components:
           $ref: "#/components/schemas/TeamRole"
         status:
           $ref: "#/components/schemas/TeamMemberStatus"
+        createdAt:
+          type: string
+          format: date-time
+
+    DomainStatus:
+      type: string
+      enum: [active, pending]
+
+    DnsRecord:
+      type: object
+      required: [type, name, value]
+      properties:
+        type:
+          type: string
+          enum: [A, CNAME]
+        name:
+          type: string
+        value:
+          type: string
+
+    DomainInput:
+      type: object
+      required: [domain, websiteId]
+      properties:
+        domain:
+          type: string
+          format: hostname
+          description: Bare hostname, without protocol or path.
+        websiteId:
+          type: string
+          description: The website this domain points to.
+
+    Domain:
+      type: object
+      required: [id, domain, websiteId, websiteName, status, dnsRecords, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        domain:
+          type: string
+          format: hostname
+        websiteId:
+          type: string
+        websiteName:
+          type: string
+        status:
+          $ref: "#/components/schemas/DomainStatus"
+        dnsRecords:
+          type: array
+          description: Records to add at the registrar.
+          items:
+            $ref: "#/components/schemas/DnsRecord"
         createdAt:
           type: string
           format: date-time

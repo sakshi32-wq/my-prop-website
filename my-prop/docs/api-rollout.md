@@ -23,7 +23,7 @@ reference implementation for everything below.
 | 0 | leads | `leads/leads-page.tsx`, `dashboard/recent-leads-card.tsx` | ✅ done (pilot) |
 | 1 | campaigns | `campaigns/campaigns-page.tsx` (`createMockCampaigns`) | ✅ done |
 | 2 | team | `settings/team-tab.tsx` (`INITIAL_MEMBERS`) | ✅ done |
-| 3 | domains | `settings/domains-tab.tsx` (`INITIAL_DOMAINS`) | ⬜ |
+| 3 | domains | `settings/domains-tab.tsx` (`INITIAL_DOMAINS`) | ✅ done |
 | 4 | api-keys | `settings/api-keys-card.tsx` (`INITIAL_KEYS`) | ⬜ |
 | 5 | integrations | `settings/integrations-tab.tsx` (`INITIAL_CONNECTED`) | ⬜ |
 | 6 | websites | `routes/app.websites.tsx`, `dashboard/active-websites-card.tsx`, `builder/storage.ts` (localStorage) | ⬜ |
@@ -95,3 +95,11 @@ Follow the Leads files as the template for each step.
   URL. Every settings query runs when `/app/settings` loads, whichever tab is showing.
   Browser checks can open `/app/settings?tab=<name>` directly. Settings data modules
   are named `settings/<domain>-data.ts`, with `settings/<domain>-optimistic.ts`.
+- **domains:** "Add Domain" now creates the domain (pending) before the DNS step, and
+  the DNS records come from the server. The DNS step has no "Back" button any more,
+  because the domain already exists by then. Verify is `POST /domains/{id}/verify`;
+  the mock never activates a domain because there's no DNS behind it.
+  **Follow-up for websites (#6):** `Domain.websiteId` is a plain string that matches
+  the current `WEBSITES` ids (`"1"`–`"4"`). When websites move to the API, make it
+  `format: uuid`, re-seed `DEMO_DOMAINS` with the new website ids, and have the mock
+  look websites up in `db.websites` instead of `WEBSITES`.

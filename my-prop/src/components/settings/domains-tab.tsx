@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   ExternalLinkIcon,
   GlobeIcon,
@@ -10,7 +11,12 @@ import { toast } from "sonner"
 
 import { AddDomainDialog } from "./add-domain-dialog"
 import { ConfirmAction } from "./confirm-action"
-import type { NewDomain } from "./add-domain-dialog"
+import { optimisticDomainDelete } from "./domains-optimistic"
+import {
+  useDeleteDomain,
+  useListDomains,
+} from "@/api/generated/domains/domains"
+import { QueryError } from "@/components/query-error"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -38,42 +44,21 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item"
-
-type Domain = NewDomain & { status: "active" | "pending" }
-
-const INITIAL_DOMAINS: Array<Domain> = [
-  {
-    domain: "skylineheights.com",
-    status: "active",
-    website: "Skyline Heights",
-  },
-  {
-    domain: "marinabay.in",
-    status: "pending",
-    website: "Marina Bay Apartments",
-  },
-  {
-    domain: "greenvalley.com",
-    status: "active",
-    website: "Green Valley Villas",
-  },
-]
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function DomainsTab() {
-  const [domains, setDomains] = useState(INITIAL_DOMAINS)
+  const queryClient = useQueryClient()
+  const domainsQuery = useListDomains()
+  const domains = domainsQuery.data ?? []
   const [addOpen, setAddOpen] = useState(false)
 
-  function addDomain(domain: NewDomain) {
-    setDomains((prev) => [...prev, { ...domain, status: "pending" }])
-    toast.success(`${domain.domain} added`, {
-      description: "It will become active once your DNS records are verified.",
-    })
-  }
-
-  function removeDomain(domain: string) {
-    setDomains((prev) => prev.filter((d) => d.domain !== domain))
-    toast.success(`${domain} removed`)
-  }
+  const deleteDomain = useDeleteDomain({
+    mutation: {
+      ...optimisticDomainDelete(queryClient),
+      onSuccess: (_data, _variables, { removed }) =>
+        toast.success(`${removed?.domain ?? "Domain"} removed`),
+    },
+  })
 
   return (
     <Card>
@@ -90,7 +75,23 @@ export function DomainsTab() {
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {domains.length === 0 ? (
+        {domainsQuery.isPending ? (
+          <ItemGroup
+            className="gap-3"
+            aria-busy="true"
+            aria-label="Loading domains"
+          >
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            ))}
+          </ItemGroup>
+        ) : domainsQuery.isError ? (
+          <QueryError
+            title="Couldn't load domains"
+            error={domainsQuery.error}
+            onRetry={() => void domainsQuery.refetch()}
+          />
+        ) : domains.length === 0 ? (
           <Empty className="border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -105,7 +106,7 @@ export function DomainsTab() {
         ) : (
           <ItemGroup className="gap-3">
             {domains.map((item) => (
-              <Item key={item.domain} variant="outline">
+              <Item key={item.id} variant="outline">
                 <ItemMedia variant="icon">
                   <GlobeIcon />
                 </ItemMedia>
@@ -120,7 +121,7 @@ export function DomainsTab() {
                       {item.status === "active" ? "Active" : "Pending"}
                     </Badge>
                   </div>
-                  <ItemDescription>{item.website}</ItemDescription>
+                  <ItemDescription>{item.websiteName}</ItemDescription>
                 </ItemContent>
                 <ItemActions>
                   <Button variant="ghost" size="icon-sm" asChild>
@@ -135,9 +136,9 @@ export function DomainsTab() {
                   </Button>
                   <ConfirmAction
                     title={`Remove ${item.domain}?`}
-                    description={`${item.website} will no longer be reachable at this domain. You can add it again later.`}
+                    description={`${item.websiteName} will no longer be reachable at this domain. You can add it again later.`}
                     confirmLabel="Remove Domain"
-                    onConfirm={() => removeDomain(item.domain)}
+                    onConfirm={() => deleteDomain.mutate({ domainId: item.id })}
                     trigger={
                       <Button
                         variant="ghost"
@@ -172,7 +173,6 @@ export function DomainsTab() {
         open={addOpen}
         onOpenChange={setAddOpen}
         existingDomains={domains.map((d) => d.domain)}
-        onAdd={addDomain}
       />
     </Card>
   )

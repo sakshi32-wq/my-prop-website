@@ -22,7 +22,7 @@ reference implementation for everything below.
 |---|---|---|---|
 | 0 | leads | `leads/leads-page.tsx`, `dashboard/recent-leads-card.tsx` | ✅ done (pilot) |
 | 1 | campaigns | `campaigns/campaigns-page.tsx` (`createMockCampaigns`) | ✅ done |
-| 2 | team | `settings/team-tab.tsx` (`INITIAL_MEMBERS`) | ⬜ |
+| 2 | team | `settings/team-tab.tsx` (`INITIAL_MEMBERS`) | ✅ done |
 | 3 | domains | `settings/domains-tab.tsx` (`INITIAL_DOMAINS`) | ⬜ |
 | 4 | api-keys | `settings/api-keys-card.tsx` (`INITIAL_KEYS`) | ⬜ |
 | 5 | integrations | `settings/integrations-tab.tsx` (`INITIAL_CONNECTED`) | ⬜ |
@@ -68,7 +68,9 @@ Follow the Leads files as the template for each step.
    - Dialogs used on several pages own their mutation.
 7. **Tests**: `<domain>/<page>.test.tsx` (seed via `db`, cover loading → data, create,
    optimistic update/delete, the error state via `server.use`) and
-   `src/mocks/handlers/<tag>.test.ts` (calls the generated client directly).
+   `src/mocks/handlers/<tag>.test.ts` (calls the generated client directly). To assert
+   a loading or optimistic in-between state, hold the request with `gate()` from
+   `src/test/msw.ts` and `release()` it after the assertion.
 8. **Gate**: `yarn run check && yarn lint && yarn typecheck && yarn test && yarn build`.
    Then check the page in the browser on a freshly started `yarn dev`. A dev server that
    was running before `src/client.tsx` existed doesn't register MSW, and `/api/*` returns
@@ -89,3 +91,7 @@ Follow the Leads files as the template for each step.
   the date and time are local with no timezone. A real backend may want a
   `scheduledAt` date-time and decide the status itself. The Automation Builder tab is
   still local state; it's a candidate for an `automations` tag later.
+- **Settings tabs** are all force-mounted, and the active one comes from `?tab=` in the
+  URL. Every settings query runs when `/app/settings` loads, whichever tab is showing.
+  Browser checks can open `/app/settings?tab=<name>` directly. Settings data modules
+  are named `settings/<domain>-data.ts`, with `settings/<domain>-optimistic.ts`.

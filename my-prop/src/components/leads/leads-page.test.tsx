@@ -1,5 +1,4 @@
 import { HttpResponse, http } from "msw"
-import type { HttpResponseResolver } from "msw"
 import { screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
@@ -9,23 +8,10 @@ import type { Lead } from "./data"
 import { db } from "@/mocks/db"
 import { server } from "@/mocks/node"
 import { apiPath } from "@/mocks/utils"
+import { gate } from "@/test/msw"
 import { renderWithClient } from "@/test/render"
 
 const column = (stage: string) => screen.getByRole("region", { name: stage })
-
-/**
- * A resolver that holds requests until release() is called. It returns
- * nothing, so MSW then falls through to the stateful handler (or the next
- * override), which makes the optimistic in-between state assertable.
- */
-function gate() {
-  let release = () => {}
-  const opened = new Promise<void>((resolve) => (release = resolve))
-  const resolver: HttpResponseResolver = async () => {
-    await opened
-  }
-  return { resolver, release }
-}
 
 async function openCardMenu(
   user: ReturnType<typeof renderWithClient>["user"],

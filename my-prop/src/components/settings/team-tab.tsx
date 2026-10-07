@@ -1,11 +1,22 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { CheckIcon, PlusIcon, UsersIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { ConfirmAction } from "./confirm-action"
 import { INVITABLE_ROLES, InviteMemberDialog } from "./invite-member-dialog"
+import {
+  optimisticTeamMemberRemove,
+  optimisticTeamMemberUpdate,
+} from "./team-optimistic"
 import { getInitials } from "./utils"
-import type { InvitableRole } from "./invite-member-dialog"
+import type { InvitableRole, TeamMember } from "./team-data"
+import {
+  useListTeamMembers,
+  useRemoveTeamMember,
+  useUpdateTeamMember,
+} from "@/api/generated/team/team"
+import { QueryError } from "@/components/query-error"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -34,45 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-type Member = {
-  id: string
-  name: string
-  email: string
-  role: "Owner" | InvitableRole
-  status: "active" | "invited"
-}
-
-const INITIAL_MEMBERS: Array<Member> = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    role: "Owner",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "Sarah Smith",
-    email: "sarah@example.com",
-    role: "Admin",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "Mike Johnson",
-    email: "mike@example.com",
-    role: "Agent",
-    status: "active",
-  },
-  {
-    id: "4",
-    name: "Lisa Chen",
-    email: "lisa@example.com",
-    role: "Agent",
-    status: "active",
-  },
-]
+import { Skeleton } from "@/components/ui/skeleton"
 
 const ROLE_PERMISSIONS = [
   {
@@ -103,39 +76,36 @@ const ROLE_PERMISSIONS = [
 ]
 
 export function TeamTab() {
-  const [members, setMembers] = useState(INITIAL_MEMBERS)
+  const queryClient = useQueryClient()
+  const membersQuery = useListTeamMembers()
+  const members = membersQuery.data ?? []
   const [inviteOpen, setInviteOpen] = useState(false)
 
-  function invite({ email, role }: { email: string; role: InvitableRole }) {
-    setMembers((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: email.split("@")[0] ?? email,
-        email,
-        role,
-        status: "invited",
-      },
-    ])
-    toast.success("Invitation sent", {
-      description: `${email} was invited as ${role}.`,
-    })
+  const updateMember = useUpdateTeamMember({
+    mutation: {
+      ...optimisticTeamMemberUpdate(queryClient),
+      onSuccess: (member) =>
+        toast.success(`${member.name} is now an ${member.role}`),
+    },
+  })
+  const removeMember = useRemoveTeamMember({
+    mutation: {
+      ...optimisticTeamMemberRemove(queryClient),
+      onSuccess: (_data, _variables, { removed }) =>
+        toast.success(
+          removed?.status === "invited"
+            ? `Invitation for ${removed.email} cancelled`
+            : `${removed?.name ?? "Member"} removed from the team`
+        ),
+    },
+  })
+
+  function changeRole(member: TeamMember, role: InvitableRole) {
+    updateMember.mutate({ memberId: member.id, data: { role } })
   }
 
-  function changeRole(member: Member, role: InvitableRole) {
-    setMembers((prev) =>
-      prev.map((m) => (m.id === member.id ? { ...m, role } : m))
-    )
-    toast.success(`${member.name} is now an ${role}`)
-  }
-
-  function remove(member: Member) {
-    setMembers((prev) => prev.filter((m) => m.id !== member.id))
-    toast.success(
-      member.status === "invited"
-        ? `Invitation for ${member.email} cancelled`
-        : `${member.name} removed from the team`
-    )
+  function remove(member: TeamMember) {
+    removeMember.mutate({ memberId: member.id })
   }
 
   return (
@@ -144,8 +114,9 @@ export function TeamTab() {
         <CardHeader>
           <CardTitle>Team Members</CardTitle>
           <CardDescription>
-            {members.length} {members.length === 1 ? "member" : "members"} in
-            your workspace.
+            {membersQuery.isSuccess
+              ? `${members.length} ${members.length === 1 ? "member" : "members"} in your workspace.`
+              : "People with access to your workspace."}
           </CardDescription>
           <CardAction>
             <Button onClick={() => setInviteOpen(true)}>
@@ -155,82 +126,102 @@ export function TeamTab() {
           </CardAction>
         </CardHeader>
         <CardContent>
-          <ItemGroup className="gap-3">
-            {members.map((member) => (
-              <Item key={member.id} variant="outline">
-                <ItemMedia>
-                  <Avatar size="lg">
-                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                  </Avatar>
-                </ItemMedia>
-                <ItemContent className="min-w-44">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ItemTitle>{member.name}</ItemTitle>
-                    {member.status === "invited" && (
-                      <Badge variant="outline">Invited</Badge>
-                    )}
-                  </div>
-                  <ItemDescription className="break-all">
-                    {member.email}
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions className="ml-auto">
-                  {member.role === "Owner" ? (
-                    <Badge variant="secondary">Owner</Badge>
-                  ) : (
-                    <>
-                      <Select
-                        value={member.role}
-                        onValueChange={(value) =>
-                          changeRole(member, value as InvitableRole)
-                        }
-                      >
-                        <SelectTrigger
-                          size="sm"
-                          aria-label={`Role for ${member.name}`}
+          {membersQuery.isPending ? (
+            <ItemGroup
+              className="gap-3"
+              aria-busy="true"
+              aria-label="Loading team members"
+            >
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} className="h-18 w-full rounded-lg" />
+              ))}
+            </ItemGroup>
+          ) : membersQuery.isError ? (
+            <QueryError
+              title="Couldn't load team members"
+              error={membersQuery.error}
+              onRetry={() => void membersQuery.refetch()}
+            />
+          ) : (
+            <ItemGroup className="gap-3">
+              {members.map((member) => (
+                <Item key={member.id} variant="outline">
+                  <ItemMedia>
+                    <Avatar size="lg">
+                      <AvatarFallback>
+                        {getInitials(member.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </ItemMedia>
+                  <ItemContent className="min-w-44">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ItemTitle>{member.name}</ItemTitle>
+                      {member.status === "invited" && (
+                        <Badge variant="outline">Invited</Badge>
+                      )}
+                    </div>
+                    <ItemDescription className="break-all">
+                      {member.email}
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions className="ml-auto">
+                    {member.role === "Owner" ? (
+                      <Badge variant="secondary">Owner</Badge>
+                    ) : (
+                      <>
+                        <Select
+                          value={member.role}
+                          onValueChange={(value) =>
+                            changeRole(member, value as InvitableRole)
+                          }
                         >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent position="popper" align="end">
-                          <SelectGroup>
-                            {INVITABLE_ROLES.map((r) => (
-                              <SelectItem key={r.value} value={r.value}>
-                                {r.value}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                      <ConfirmAction
-                        title={
-                          member.status === "invited"
-                            ? `Cancel invitation for ${member.email}?`
-                            : `Remove ${member.name}?`
-                        }
-                        description={
-                          member.status === "invited"
-                            ? "The invitation link will stop working."
-                            : `${member.name} will immediately lose access to your workspace.`
-                        }
-                        confirmLabel={
-                          member.status === "invited"
-                            ? "Cancel Invitation"
-                            : "Remove"
-                        }
-                        cancelLabel="Keep"
-                        onConfirm={() => remove(member)}
-                        trigger={
-                          <Button variant="ghost" size="sm">
-                            Remove
-                          </Button>
-                        }
-                      />
-                    </>
-                  )}
-                </ItemActions>
-              </Item>
-            ))}
-          </ItemGroup>
+                          <SelectTrigger
+                            size="sm"
+                            aria-label={`Role for ${member.name}`}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent position="popper" align="end">
+                            <SelectGroup>
+                              {INVITABLE_ROLES.map((r) => (
+                                <SelectItem key={r.value} value={r.value}>
+                                  {r.value}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                        <ConfirmAction
+                          title={
+                            member.status === "invited"
+                              ? `Cancel invitation for ${member.email}?`
+                              : `Remove ${member.name}?`
+                          }
+                          description={
+                            member.status === "invited"
+                              ? "The invitation link will stop working."
+                              : `${member.name} will immediately lose access to your workspace.`
+                          }
+                          confirmLabel={
+                            member.status === "invited"
+                              ? "Cancel Invitation"
+                              : "Remove"
+                          }
+                          cancelLabel="Keep"
+                          onConfirm={() => remove(member)}
+                          trigger={
+                            <Button variant="ghost" size="sm">
+                              Remove
+                            </Button>
+                          }
+                        />
+                      </>
+                    )}
+                  </ItemActions>
+                </Item>
+              ))}
+            </ItemGroup>
+          )}
         </CardContent>
       </Card>
 
@@ -291,7 +282,6 @@ export function TeamTab() {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         existingEmails={members.map((m) => m.email)}
-        onInvite={invite}
       />
     </div>
   )

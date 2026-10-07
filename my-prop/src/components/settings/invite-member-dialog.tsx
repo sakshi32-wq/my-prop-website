@@ -1,7 +1,10 @@
 import { useState } from "react"
 import { InfoIcon, MailIcon, SendIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { EMAIL_RE } from "./utils"
+import type { InvitableRole, TeamMemberInvite } from "./team-data"
+import { useInviteTeamMember } from "@/api/generated/team/team"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -33,8 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-export type InvitableRole = "Admin" | "Agent"
+import { Spinner } from "@/components/ui/spinner"
 
 export const INVITABLE_ROLES: Array<{
   value: InvitableRole
@@ -66,23 +68,30 @@ export function InviteMemberDialog({
   open,
   onOpenChange,
   existingEmails,
-  onInvite,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   existingEmails: Array<string>
-  onInvite: (invite: { email: string; role: InvitableRole }) => void
 }) {
+  const invite = useInviteTeamMember({
+    mutation: {
+      onSuccess: (member) => {
+        toast.success("Invitation sent", {
+          description: `${member.email} was invited as ${member.role}.`,
+        })
+        onOpenChange(false)
+      },
+    },
+  })
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
         {/* Remounts on every open, so the form always starts empty. */}
         <InviteForm
           existingEmails={existingEmails}
-          onSubmit={(invite) => {
-            onInvite(invite)
-            onOpenChange(false)
-          }}
+          pending={invite.isPending}
+          onSubmit={(data) => invite.mutate({ data })}
         />
       </DialogContent>
     </Dialog>
@@ -91,10 +100,12 @@ export function InviteMemberDialog({
 
 function InviteForm({
   existingEmails,
+  pending,
   onSubmit,
 }: {
   existingEmails: Array<string>
-  onSubmit: (invite: { email: string; role: InvitableRole }) => void
+  pending: boolean
+  onSubmit: (invite: TeamMemberInvite) => void
 }) {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<InvitableRole>("Agent")
@@ -195,8 +206,12 @@ function InviteForm({
             Cancel
           </Button>
         </DialogClose>
-        <Button type="submit">
-          <SendIcon data-icon="inline-start" />
+        <Button type="submit" disabled={pending}>
+          {pending ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <SendIcon data-icon="inline-start" />
+          )}
           Send Invitation
         </Button>
       </DialogFooter>

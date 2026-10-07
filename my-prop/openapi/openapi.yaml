@@ -14,6 +14,8 @@ tags:
     description: CRM leads and their pipeline stage
   - name: campaigns
     description: WhatsApp, Email and SMS marketing campaigns
+  - name: team
+    description: Workspace members, invitations and roles
 
 paths:
   /leads:
@@ -280,6 +282,100 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /team/members:
+    get:
+      operationId: listTeamMembers
+      tags: [team]
+      summary: List workspace members and pending invitations, oldest first
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: inviteTeamMember
+      tags: [team]
+      summary: Invite someone by email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamMemberInvite"
+      responses:
+        "201":
+          description: The invited member (status invited)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /team/members/{memberId}:
+    parameters:
+      - $ref: "#/components/parameters/MemberId"
+    get:
+      operationId: getTeamMember
+      tags: [team]
+      summary: Get a member
+      responses:
+        "200":
+          description: The member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateTeamMember
+      tags: [team]
+      summary: Change a member's role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamMemberUpdate"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      operationId: removeTeamMember
+      tags: [team]
+      summary: Remove a member or cancel their invitation
+      description: The workspace owner can't be removed (422).
+      responses:
+        "204":
+          description: Removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -287,6 +383,13 @@ components:
       scheme: bearer
 
   parameters:
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     CampaignId:
       name: campaignId
       in: path
@@ -608,3 +711,54 @@ components:
             createdAt:
               type: string
               format: date-time
+
+    TeamRole:
+      type: string
+      enum: [Owner, Admin, Agent]
+
+    TeamInvitableRole:
+      type: string
+      description: Roles that can be given by invite or role change (not Owner).
+      enum: [Admin, Agent]
+
+    TeamMemberStatus:
+      type: string
+      enum: [active, invited]
+
+    TeamMemberInvite:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/TeamInvitableRole"
+
+    TeamMemberUpdate:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/TeamInvitableRole"
+
+    TeamMember:
+      type: object
+      required: [id, name, email, role, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Defaults to the email's local part until the invite is accepted.
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/TeamRole"
+        status:
+          $ref: "#/components/schemas/TeamMemberStatus"
+        createdAt:
+          type: string
+          format: date-time

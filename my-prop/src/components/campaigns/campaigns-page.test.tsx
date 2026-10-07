@@ -1,5 +1,4 @@
 import { HttpResponse, http } from "msw"
-import type { HttpResponseResolver } from "msw"
 import { screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
@@ -9,17 +8,8 @@ import type { Campaign } from "./campaign-data"
 import { db } from "@/mocks/db"
 import { server } from "@/mocks/node"
 import { apiPath } from "@/mocks/utils"
+import { gate } from "@/test/msw"
 import { renderWithClient } from "@/test/render"
-
-/** Holds requests until release(); then MSW falls through to the next handler. */
-function gate() {
-  let release = () => {}
-  const opened = new Promise<void>((resolve) => (release = resolve))
-  const resolver: HttpResponseResolver = async () => {
-    await opened
-  }
-  return { resolver, release }
-}
 
 const campaignItem = (name: string) =>
   screen.getByText(name).closest<HTMLElement>("[data-slot=item]")!

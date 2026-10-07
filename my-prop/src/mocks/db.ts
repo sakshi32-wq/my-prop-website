@@ -1,8 +1,9 @@
 // In-memory tables behind the stateful mock handlers. Rows are copied on the
 // way in and out, so callers can't mutate the store by accident.
-import type { Campaign, Lead } from "@/api/generated/model"
+import type { Campaign, Lead, TeamMember } from "@/api/generated/model"
 import { DEMO_CAMPAIGNS } from "@/components/campaigns/campaign-data"
 import { DEMO_LEADS } from "@/components/leads/data"
+import { DEMO_TEAM_MEMBERS } from "@/components/settings/team-data"
 
 function createTable<TRow extends { id: string }>(seed: () => Array<TRow>) {
   let rows = seed().map((row) => structuredClone(row))
@@ -38,9 +39,11 @@ function createTable<TRow extends { id: string }>(seed: () => Array<TRow>) {
 export const db = {
   leads: createTable<Lead>(() => DEMO_LEADS),
   campaigns: createTable<Campaign>(() => DEMO_CAMPAIGNS),
+  teamMembers: createTable<TeamMember>(() => DEMO_TEAM_MEMBERS),
   /** Restores every table to its seed data. Called after each test. */
   reset() {
     db.leads.reset()
     db.campaigns.reset()
+    db.teamMembers.reset()
   },
 }

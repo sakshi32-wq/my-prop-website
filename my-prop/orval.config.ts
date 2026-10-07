@@ -45,6 +45,17 @@ export default defineConfig({
                 { query: "getCampaign", params: ["campaignId"] },
               ],
             },
+            {
+              onMutations: ["inviteTeamMember"],
+              invalidates: ["listTeamMembers"],
+            },
+            {
+              onMutations: ["updateTeamMember", "removeTeamMember"],
+              invalidates: [
+                "listTeamMembers",
+                { query: "getTeamMember", params: ["memberId"] },
+              ],
+            },
           ],
         },
       },

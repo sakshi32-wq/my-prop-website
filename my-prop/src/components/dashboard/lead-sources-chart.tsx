@@ -14,6 +14,9 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useGetDashboardOverview } from "@/api/generated/analytics/analytics"
+import { QueryError } from "@/components/query-error"
 
 const chartConfig = {
   share: { label: "Share (%)" },
@@ -21,16 +24,17 @@ const chartConfig = {
   whatsapp: { label: "WhatsApp", color: "var(--chart-2)" },
   social: { label: "Social Media", color: "var(--chart-3)" },
   referral: { label: "Referral", color: "var(--chart-4)" },
+  "walk-in": { label: "Walk-in", color: "var(--chart-5)" },
 } satisfies ChartConfig
 
-const SOURCE_DATA = [
-  { source: "website", share: 45, fill: "var(--color-website)" },
-  { source: "whatsapp", share: 30, fill: "var(--color-whatsapp)" },
-  { source: "social", share: 15, fill: "var(--color-social)" },
-  { source: "referral", share: 10, fill: "var(--color-referral)" },
-] as const
-
 export function LeadSourcesChart() {
+  const overviewQuery = useGetDashboardOverview()
+  const sources = (overviewQuery.data?.sources ?? []).map((item) => ({
+    source: item.key,
+    share: item.share,
+    fill: `var(--color-${item.key})`,
+  }))
+
   return (
     <Card>
       <CardHeader>
@@ -38,28 +42,38 @@ export function LeadSourcesChart() {
         <CardDescription>Where this month's leads came from</CardDescription>
       </CardHeader>
       <CardContent className="flex-1">
-        <ChartContainer
-          config={chartConfig}
-          className="mx-auto aspect-square max-h-64"
-        >
-          <PieChart>
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent nameKey="source" hideLabel />}
-            />
-            <Pie
-              data={[...SOURCE_DATA]}
-              dataKey="share"
-              nameKey="source"
-              innerRadius="55%"
-              strokeWidth={2}
-            />
-          </PieChart>
-        </ChartContainer>
+        {overviewQuery.isPending ? (
+          <Skeleton className="mx-auto aspect-square max-h-64 rounded-full" />
+        ) : overviewQuery.isError ? (
+          <QueryError
+            title="Couldn't load lead sources"
+            error={overviewQuery.error}
+            onRetry={() => void overviewQuery.refetch()}
+          />
+        ) : (
+          <ChartContainer
+            config={chartConfig}
+            className="mx-auto aspect-square max-h-64"
+          >
+            <PieChart>
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent nameKey="source" hideLabel />}
+              />
+              <Pie
+                data={sources}
+                dataKey="share"
+                nameKey="source"
+                innerRadius="55%"
+                strokeWidth={2}
+              />
+            </PieChart>
+          </ChartContainer>
+        )}
       </CardContent>
       <CardFooter>
         <ul className="grid w-full grid-cols-2 gap-x-4 gap-y-2">
-          {SOURCE_DATA.map((item) => {
+          {sources.map((item) => {
             const config = chartConfig[item.source]
             return (
               <li key={item.source} className="flex items-center gap-2">

@@ -28,6 +28,8 @@ tags:
     description: The website template library, including saved AI templates
   - name: account
     description: The signed-in user's profile, preferences and password
+  - name: analytics
+    description: Read-only reporting for the dashboard and analytics pages
 
 paths:
   /leads:
@@ -932,6 +934,51 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
+  /analytics/overview:
+    get:
+      operationId: getDashboardOverview
+      tags: [analytics]
+      summary: Headline numbers and charts for the dashboard
+      responses:
+        "200":
+          description: Overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardOverview"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /analytics/report:
+    get:
+      operationId: getAnalyticsReport
+      tags: [analytics]
+      summary: Analytics for a date range (both ends inclusive)
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1815,3 +1862,190 @@ components:
         newPassword:
           type: string
           minLength: 8
+
+    MetricChange:
+      type: object
+      required: [value, changePct]
+      properties:
+        value:
+          type: number
+        changePct:
+          type: number
+          description: Change against the previous period, in percent.
+
+    SourceShare:
+      type: object
+      required: [key, share]
+      properties:
+        key:
+          $ref: "#/components/schemas/LeadSource"
+        share:
+          type: number
+          description: Percent of leads.
+
+    FunnelStep:
+      type: object
+      required: [stage, count]
+      properties:
+        stage:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+
+    DashboardOverview:
+      type: object
+      required: [totalLeads, todaysLeads, activeCampaigns, conversionRate, leadsLast7Days, sources, funnel]
+      properties:
+        totalLeads:
+          description: This month, against last month.
+          allOf:
+            - $ref: "#/components/schemas/MetricChange"
+        todaysLeads:
+          description: Today, against yesterday.
+          allOf:
+            - $ref: "#/components/schemas/MetricChange"
+        activeCampaigns:
+          type: object
+          required: [value, launchingToday]
+          properties:
+            value:
+              type: integer
+            launchingToday:
+              type: integer
+        conversionRate:
+          description: Percent, this month against last month.
+          allOf:
+            - $ref: "#/components/schemas/MetricChange"
+        leadsLast7Days:
+          type: array
+          items:
+            type: object
+            required: [date, leads]
+            properties:
+              date:
+                type: string
+                format: date
+              leads:
+                type: integer
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceShare"
+        funnel:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunnelStep"
+
+    AnalyticsReport:
+      type: object
+      required: [days, kpis, trend, sources, campaigns, funnel, overallConversion, websites]
+      properties:
+        days:
+          type: integer
+          minimum: 1
+        kpis:
+          type: object
+          required: [totalLeads, conversionRate, costPerLead, visitors, trends]
+          properties:
+            totalLeads:
+              type: integer
+            conversionRate:
+              type: number
+            costPerLead:
+              type: number
+            visitors:
+              type: integer
+            trends:
+              type: object
+              description: Percent change against the previous period of the same length.
+              required: [totalLeads, conversionRate, costPerLead, visitors]
+              properties:
+                totalLeads:
+                  type: number
+                conversionRate:
+                  type: number
+                costPerLead:
+                  type: number
+                visitors:
+                  type: number
+        trend:
+          type: array
+          items:
+            type: object
+            required: [date, leads, qualified, converted]
+            properties:
+              date:
+                type: string
+                format: date
+                description: First day of the bucket.
+              leads:
+                type: integer
+              qualified:
+                type: integer
+              converted:
+                type: integer
+        sources:
+          type: array
+          items:
+            type: object
+            required: [key, name, share, leads]
+            properties:
+              key:
+                $ref: "#/components/schemas/LeadSource"
+              name:
+                type: string
+              share:
+                type: number
+              leads:
+                type: integer
+        campaigns:
+          type: array
+          items:
+            type: object
+            required: [name, sent, converted, cpl]
+            properties:
+              name:
+                type: string
+              sent:
+                type: integer
+              converted:
+                type: integer
+              cpl:
+                type: number
+                description: Cost per lead in INR.
+        funnel:
+          type: array
+          items:
+            type: object
+            required: [stage, count, ofVisitors, fromPrevious]
+            properties:
+              stage:
+                type: string
+              count:
+                type: integer
+              ofVisitors:
+                type: number
+              fromPrevious:
+                type: [number, "null"]
+        overallConversion:
+          type: number
+        websites:
+          type: array
+          items:
+            type: object
+            required: [rank, name, visitors, leads, cvr, revenueCr]
+            properties:
+              rank:
+                type: integer
+              name:
+                type: string
+              visitors:
+                type: integer
+              leads:
+                type: integer
+              cvr:
+                type: number
+              revenueCr:
+                type: number
+                description: Revenue in crore INR.

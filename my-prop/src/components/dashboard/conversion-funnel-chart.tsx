@@ -14,25 +14,22 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
-
-const FUNNEL_DATA = [
-  { stage: "Visitors", count: 1250 },
-  { stage: "Leads", count: 425 },
-  { stage: "Qualified", count: 185 },
-  { stage: "Meetings", count: 98 },
-  { stage: "Closed", count: 42 },
-]
+import { Skeleton } from "@/components/ui/skeleton"
+import { useGetDashboardOverview } from "@/api/generated/analytics/analytics"
+import { QueryError } from "@/components/query-error"
 
 const chartConfig = {
   count: { label: "Count", color: "var(--chart-2)" },
 } satisfies ChartConfig
 
-const overallRate = (
-  (FUNNEL_DATA[FUNNEL_DATA.length - 1].count / FUNNEL_DATA[0].count) *
-  100
-).toFixed(1)
-
 export function ConversionFunnelChart() {
+  const overviewQuery = useGetDashboardOverview()
+  const funnel = overviewQuery.data?.funnel ?? []
+  const first = funnel.at(0)?.count ?? 0
+  const overallRate = first
+    ? (((funnel.at(-1)?.count ?? 0) / first) * 100).toFixed(1)
+    : "0.0"
+
   return (
     <Card>
       <CardHeader>
@@ -40,43 +37,55 @@ export function ConversionFunnelChart() {
         <CardDescription>From first visit to closed deal</CardDescription>
       </CardHeader>
       <CardContent className="flex-1">
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-64 w-full"
-        >
-          <BarChart
-            data={FUNNEL_DATA}
-            layout="vertical"
-            margin={{ left: 0, right: 40 }}
+        {overviewQuery.isPending ? (
+          <Skeleton className="h-64 w-full" />
+        ) : overviewQuery.isError ? (
+          <QueryError
+            title="Couldn't load the funnel"
+            error={overviewQuery.error}
+            onRetry={() => void overviewQuery.refetch()}
+          />
+        ) : (
+          <ChartContainer
+            config={chartConfig}
+            className="aspect-auto h-64 w-full"
           >
-            <XAxis type="number" dataKey="count" hide />
-            <YAxis
-              dataKey="stage"
-              type="category"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              width={72}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Bar dataKey="count" fill="var(--color-count)" radius={6}>
-              <LabelList
-                dataKey="count"
-                position="right"
-                offset={8}
-                className="fill-foreground"
-                fontSize={12}
+            <BarChart
+              data={funnel}
+              layout="vertical"
+              margin={{ left: 0, right: 40 }}
+            >
+              <XAxis type="number" dataKey="count" hide />
+              <YAxis
+                dataKey="stage"
+                type="category"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                width={72}
               />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent hideLabel />}
+              />
+              <Bar dataKey="count" fill="var(--color-count)" radius={6}>
+                <LabelList
+                  dataKey="count"
+                  position="right"
+                  offset={8}
+                  className="fill-foreground"
+                  fontSize={12}
+                />
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        )}
       </CardContent>
-      <CardFooter className="text-muted-foreground">
-        {overallRate}% of visitors become customers
-      </CardFooter>
+      {overviewQuery.isSuccess && (
+        <CardFooter className="text-muted-foreground">
+          {overallRate}% of visitors become customers
+        </CardFooter>
+      )}
     </Card>
   )
 }

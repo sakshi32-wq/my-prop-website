@@ -3,6 +3,7 @@
 import type {
   ApiKey,
   Campaign,
+  DashboardOverview,
   Domain,
   Integration,
   Lead,
@@ -14,6 +15,7 @@ import type {
   WebsiteContent,
 } from "@/api/generated/model"
 import { DEMO_CAMPAIGNS } from "@/components/campaigns/campaign-data"
+import { DEMO_DASHBOARD_OVERVIEW } from "@/components/dashboard/data"
 import { DEMO_LEADS } from "@/components/leads/data"
 import {
   DEMO_NOTIFICATION_PREFERENCES,
@@ -97,6 +99,9 @@ export const db = {
   notificationPreferences: createSingleton<NotificationPreferences>(
     DEMO_NOTIFICATION_PREFERENCES
   ),
+  dashboardOverview: createSingleton<DashboardOverview>(
+    DEMO_DASHBOARD_OVERVIEW
+  ),
   /** Restores every table to its seed data. Called after each test. */
   reset() {
     db.leads.reset()
@@ -110,5 +115,6 @@ export const db = {
     db.websiteContents.reset()
     db.profile.reset()
     db.notificationPreferences.reset()
+    db.dashboardOverview.reset()
   },
 }

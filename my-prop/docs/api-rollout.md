@@ -29,10 +29,19 @@ reference implementation for everything below.
 | 6 | websites | `routes/app.websites.tsx`, `dashboard/active-websites-card.tsx`, `builder/storage.ts` (localStorage) | ✅ done |
 | 7 | templates | `routes/app.templates.tsx` (`TEMPLATES`) | ✅ done |
 | 8 | profile (tag `account`) | `settings/profile-info-card.tsx`, `notifications-card.tsx`, `security-card.tsx`, `app-shell/user-menu.tsx` | ✅ done |
-| 9 | analytics | `analytics/*`, `dashboard/kpi-cards.tsx` and charts (read-only) | ⬜ |
+| 9 | analytics | `analytics/*`, `dashboard/kpi-cards.tsx` and charts (read-only) | ✅ done |
 
 Out of scope for now (still simulated, see `docs/replication-plan.md`): auth, AI
 generation, Lighthouse reports, billing.
+
+Still local state, and candidates for a next round:
+
+- the header's notifications popover (`app-shell/notifications-popover.tsx`, a
+  `notifications` tag with list and mark-read)
+- the campaign Automation Builder (`campaigns/automation/*`, an `automations` tag)
+- the lead activity timeline, call log and WhatsApp/site-visit actions in
+  `leads/*-dialog.tsx`, which only show toasts today
+- AI Studio's recent generations (`ai-studio/recent-generations.tsx`)
 
 ## Recipe (per domain)
 
@@ -150,3 +159,11 @@ Follow the Leads files as the template for each step.
   password because there's no real auth yet. Single-record mock state uses
   `createSingleton` in `src/mocks/db.ts`. The team's "John Doe" owner row is a
   separate team-member record and doesn't follow profile renames.
+- **analytics:** read-only. `GET /analytics/overview` feeds the dashboard's KPI cards,
+  7-day chart, sources pie and funnel; the four share one cached request.
+  `GET /analytics/report?from&to` feeds the Analytics page, with `keepPreviousData`
+  when the range changes. The report is computed by the mock server
+  (`src/mocks/analytics.ts`, previously `buildAnalytics` in the client).
+  `toAnalyticsView` adds the UI-only labels and chart colours. The numbers are demo
+  values and aren't derived from the other mock tables (for example, Total Leads
+  doesn't count the leads board).

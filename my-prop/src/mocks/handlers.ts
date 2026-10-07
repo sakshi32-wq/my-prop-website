@@ -1,4 +1,5 @@
 import { accountHandlers } from "./handlers/account"
+import { analyticsHandlers } from "./handlers/analytics"
 import { apiKeyHandlers } from "./handlers/api-keys"
 import { campaignHandlers } from "./handlers/campaigns"
 import { domainHandlers } from "./handlers/domains"
@@ -8,6 +9,7 @@ import { teamHandlers } from "./handlers/team"
 import { templateHandlers } from "./handlers/templates"
 import { websiteHandlers } from "./handlers/websites"
 import { getAccountMock } from "@/api/generated/account/account.msw"
+import { getAnalyticsMock } from "@/api/generated/analytics/analytics.msw"
 import { getApiKeysMock } from "@/api/generated/api-keys/api-keys.msw"
 import { getCampaignsMock } from "@/api/generated/campaigns/campaigns.msw"
 import { getDomainsMock } from "@/api/generated/domains/domains.msw"
@@ -29,6 +31,7 @@ export const handlers = [
   ...websiteHandlers,
   ...templateHandlers,
   ...accountHandlers,
+  ...analyticsHandlers,
   ...getLeadsMock(),
   ...getCampaignsMock(),
   ...getTeamMock(),
@@ -38,4 +41,5 @@ export const handlers = [
   ...getWebsitesMock(),
   ...getTemplatesMock(),
   ...getAccountMock(),
+  ...getAnalyticsMock(),
 ]

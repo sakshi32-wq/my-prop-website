@@ -1,9 +1,8 @@
 import { UserPlusIcon } from "lucide-react"
 import { toast } from "sonner"
 
-import { createLeadId } from "./data"
 import { LeadForm } from "./lead-form"
-import type { Lead } from "./data"
+import { useCreateLead } from "@/api/generated/leads/leads"
 import {
   Dialog,
   DialogContent,
@@ -12,17 +11,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-export type { Lead } from "./data"
-
+/** Used on the Leads page and the dashboard, so it owns its mutation. */
 export function AddLeadDialog({
   open,
   onOpenChange,
-  onAdd,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAdd?: (lead: Lead) => void
 }) {
+  const createLead = useCreateLead({
+    mutation: {
+      onSuccess: (lead) => {
+        toast.success("Lead added", {
+          description: `${lead.name} was added to your pipeline.`,
+        })
+        onOpenChange(false)
+      },
+    },
+  })
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
@@ -36,18 +43,8 @@ export function AddLeadDialog({
           showAiTip
           submitLabel="Add Lead"
           submitIcon={<UserPlusIcon data-icon="inline-start" />}
-          onSubmit={(values) => {
-            const lead: Lead = {
-              ...values,
-              id: createLeadId(),
-              addedAt: new Date(),
-            }
-            onAdd?.(lead)
-            toast.success("Lead added", {
-              description: `${lead.name} was added to your pipeline.`,
-            })
-            onOpenChange(false)
-          }}
+          pending={createLead.isPending}
+          onSubmit={(values) => createLead.mutate({ data: values })}
         />
       </DialogContent>
     </Dialog>

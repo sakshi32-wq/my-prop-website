@@ -5,7 +5,7 @@ import { MailIcon, PhoneIcon, SparklesIcon } from "lucide-react"
 import { SOURCE_ICONS } from "./data"
 import { OptionSelect } from "./option-select"
 import { TagEditor } from "./tag-editor"
-import type { LeadInput } from "./data"
+import type { LeadInput, LeadSource, LeadStage } from "./data"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { DialogClose, DialogFooter } from "@/components/ui/dialog"
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import {
   BUDGET_RANGES,
@@ -39,9 +40,11 @@ import {
   LEAD_STAGES,
   PROJECTS,
 } from "@/lib/mock-data"
-import type { LeadSource, LeadStage } from "@/lib/mock-data"
 
-type FormValues = Omit<LeadInput, "source"> & { source: LeadSource | "" }
+/** The form always sends every field, for both create and update. */
+export type LeadFormValues = Required<LeadInput>
+
+type FormValues = Omit<LeadFormValues, "source"> & { source: LeadSource | "" }
 
 const EMPTY_VALUES: FormValues = {
   name: "",
@@ -81,13 +84,16 @@ export function LeadForm({
   submitLabel,
   submitIcon,
   showAiTip = false,
+  pending = false,
   onSubmit,
 }: {
   initialValues?: FormValues
   submitLabel: string
   submitIcon: ReactNode
   showAiTip?: boolean
-  onSubmit: (values: LeadInput) => void
+  /** Shows the submit button as loading while the request runs. */
+  pending?: boolean
+  onSubmit: (values: LeadFormValues) => void
 }) {
   const [values, setValues] = useState<FormValues>(initialValues)
   const [errors, setErrors] = useState<Errors>({})
@@ -282,8 +288,8 @@ export function LeadForm({
             Cancel
           </Button>
         </DialogClose>
-        <Button type="submit">
-          {submitIcon}
+        <Button type="submit" disabled={pending}>
+          {pending ? <Spinner data-icon="inline-start" /> : submitIcon}
           {submitLabel}
         </Button>
       </DialogFooter>

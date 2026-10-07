@@ -1,4 +1,9 @@
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+
+import { optimisticLeadDelete } from "./optimistic"
 import type { Lead } from "./data"
+import { useDeleteLead } from "@/api/generated/leads/leads"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,8 +24,18 @@ export function DeleteLeadDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   lead: Lead | null
-  onConfirm: (lead: Lead) => void
+  /** Called when the user confirms, before the request finishes. */
+  onConfirm?: (lead: Lead) => void
 }) {
+  const queryClient = useQueryClient()
+  const deleteLead = useDeleteLead({
+    mutation: {
+      ...optimisticLeadDelete(queryClient),
+      onSuccess: (_data, _variables, context) =>
+        toast.success("Lead deleted", { description: context.lead?.name }),
+    },
+  })
+
   return (
     <AlertDialog open={open && !!lead} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -36,7 +51,9 @@ export function DeleteLeadDialog({
           <AlertDialogAction
             variant="destructive"
             onClick={() => {
-              if (lead) onConfirm(lead)
+              if (!lead) return
+              deleteLead.mutate({ leadId: lead.id })
+              onConfirm?.(lead)
             }}
           >
             Delete Lead

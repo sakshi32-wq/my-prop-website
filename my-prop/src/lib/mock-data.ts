@@ -13,6 +13,10 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
+import type { LeadSource, LeadStage } from "@/api/generated/model"
+
+export type { LeadSource, LeadStage }
+
 export function unsplash(photoId: string, width: number, height: number) {
   return `https://images.unsplash.com/${photoId}?w=${width}&h=${height}&fit=crop`
 }
@@ -41,8 +45,7 @@ export const LEAD_SOURCES = [
   { value: "social", label: "Social Media" },
   { value: "referral", label: "Referral" },
   { value: "walk-in", label: "Walk-in" },
-] as const
-export type LeadSource = (typeof LEAD_SOURCES)[number]["value"]
+] as const satisfies ReadonlyArray<{ value: LeadSource; label: string }>
 
 export const BUDGET_RANGES = [
   "₹40L - 60L",
@@ -72,8 +75,7 @@ export const LEAD_STAGES = [
   { value: "negotiation", label: "Negotiation" },
   { value: "closed", label: "Closed" },
   { value: "lost", label: "Lost" },
-] as const
-export type LeadStage = (typeof LEAD_STAGES)[number]["value"]
+] as const satisfies ReadonlyArray<{ value: LeadStage; label: string }>
 
 export const QUICK_TAGS = [
   "Hot Lead",

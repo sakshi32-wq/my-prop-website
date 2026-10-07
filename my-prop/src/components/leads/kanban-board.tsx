@@ -13,7 +13,7 @@ import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import { UserIcon } from "lucide-react"
 
 import { LeadCard } from "./lead-card"
-import type { Lead } from "./data"
+import type { Lead, LeadStage } from "./data"
 import type { LeadAction } from "./lead-card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -23,8 +23,8 @@ import {
   EmptyMedia,
 } from "@/components/ui/empty"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
 import { LEAD_STAGES } from "@/lib/mock-data"
-import type { LeadStage } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
 
 type BoardProps = {
@@ -160,5 +160,37 @@ export function KanbanBoard({ leads, onAction, onMove }: BoardProps) {
         ) : null}
       </DragOverlay>
     </DndContext>
+  )
+}
+
+/** Loading state with the same column layout as the board. */
+export function KanbanSkeleton() {
+  return (
+    <ScrollArea className="w-0 min-w-full">
+      <div
+        className="flex gap-4 pb-4"
+        aria-busy="true"
+        aria-label="Loading leads"
+      >
+        {LEAD_STAGES.map((stage, index) => (
+          <section
+            key={stage.value}
+            aria-label={stage.label}
+            className="flex w-72 shrink-0 flex-col gap-3"
+          >
+            <div className="flex items-center justify-between gap-2 px-1">
+              <h2 className="truncate font-medium">{stage.label}</h2>
+              <Skeleton className="h-5 w-6 rounded-full" />
+            </div>
+            <div className="flex min-h-96 flex-col gap-3 rounded-xl bg-muted/50 p-2">
+              {Array.from({ length: index % 2 === 0 ? 2 : 1 }, (_, i) => (
+                <Skeleton key={i} className="h-36 w-full rounded-xl" />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
   )
 }

@@ -8,8 +8,16 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
+import type { Lead, LeadSource } from "@/api/generated/model"
 import { LEAD_SOURCES, LEAD_STAGES } from "@/lib/mock-data"
-import type { LeadSource, LeadStage } from "@/lib/mock-data"
+
+export type {
+  Lead,
+  LeadInput,
+  LeadSource,
+  LeadStage,
+  LeadUpdate,
+} from "@/api/generated/model"
 
 export const SOURCE_ICONS: Record<LeadSource, LucideIcon> = {
   website: GlobeIcon,
@@ -18,23 +26,6 @@ export const SOURCE_ICONS: Record<LeadSource, LucideIcon> = {
   referral: UserPlusIcon,
   "walk-in": UserIcon,
 }
-
-export type Lead = {
-  id: string
-  name: string
-  phone: string
-  email: string
-  source: LeadSource
-  budget: string
-  configuration: string
-  project: string
-  stage: LeadStage
-  tags: Array<string>
-  notes: string
-  addedAt: Date
-}
-
-export type LeadInput = Omit<Lead, "id" | "addedAt">
 
 export function sourceLabel(source: string) {
   return LEAD_SOURCES.find((s) => s.value === source)?.label ?? source
@@ -62,15 +53,12 @@ export function phoneDigits(phone: string) {
   return phone.replace(/\D/g, "")
 }
 
-export function createLeadId() {
-  return `lead-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
-}
-
 const now = new Date()
 
-export const INITIAL_LEADS: Array<Lead> = [
+/** Seed data for the mock API (src/mocks/db.ts). */
+export const DEMO_LEADS: Array<Lead> = [
   {
-    id: "1",
+    id: "37ae9904-940c-4f95-8256-6f2b4520db4e",
     name: "Rahul Sharma",
     phone: "+91 98765 43210",
     email: "rahul@example.com",
@@ -81,10 +69,10 @@ export const INITIAL_LEADS: Array<Lead> = [
     stage: "new",
     tags: ["Hot Lead"],
     notes: "",
-    addedAt: subHours(now, 2),
+    addedAt: subHours(now, 2).toISOString(),
   },
   {
-    id: "2",
+    id: "18628295-c8bc-478a-bbf8-1af345fbc072",
     name: "Priya Patel",
     phone: "+91 98765 43211",
     email: "priya@example.com",
@@ -95,10 +83,10 @@ export const INITIAL_LEADS: Array<Lead> = [
     stage: "new",
     tags: [],
     notes: "",
-    addedAt: subHours(now, 5),
+    addedAt: subHours(now, 5).toISOString(),
   },
   {
-    id: "3",
+    id: "7545c4cb-c771-40d2-aad3-850e90a1057f",
     name: "Amit Kumar",
     phone: "+91 98765 43212",
     email: "amit@example.com",
@@ -109,10 +97,10 @@ export const INITIAL_LEADS: Array<Lead> = [
     stage: "contacted",
     tags: ["First Time Buyer"],
     notes: "",
-    addedAt: subDays(now, 1),
+    addedAt: subDays(now, 1).toISOString(),
   },
   {
-    id: "4",
+    id: "0e21455c-f855-4135-bbc4-5713df5f5386",
     name: "Neha Singh",
     phone: "+91 98765 43213",
     email: "neha@example.com",
@@ -123,10 +111,10 @@ export const INITIAL_LEADS: Array<Lead> = [
     stage: "interested",
     tags: ["Hot Lead"],
     notes: "",
-    addedAt: subDays(now, 2),
+    addedAt: subDays(now, 2).toISOString(),
   },
   {
-    id: "5",
+    id: "f632d027-39a7-4810-be34-ca0f4e63f8db",
     name: "Vikram Mehta",
     phone: "+91 98765 43214",
     email: "vikram@example.com",
@@ -137,10 +125,10 @@ export const INITIAL_LEADS: Array<Lead> = [
     stage: "interested",
     tags: ["Investor"],
     notes: "",
-    addedAt: subDays(now, 2),
+    addedAt: subDays(now, 2).toISOString(),
   },
   {
-    id: "6",
+    id: "8f555360-8459-4e16-bcc7-2036cd29645e",
     name: "Anjali Desai",
     phone: "+91 98765 43215",
     email: "anjali@example.com",
@@ -151,10 +139,10 @@ export const INITIAL_LEADS: Array<Lead> = [
     stage: "scheduled",
     tags: ["Site Visit: Tomorrow"],
     notes: "",
-    addedAt: subDays(now, 3),
+    addedAt: subDays(now, 3).toISOString(),
   },
   {
-    id: "7",
+    id: "d303a4d6-34b0-4d8f-a564-87c6d1e72962",
     name: "Rajesh Gupta",
     phone: "+91 98765 43216",
     email: "rajesh@example.com",
@@ -165,10 +153,10 @@ export const INITIAL_LEADS: Array<Lead> = [
     stage: "negotiation",
     tags: ["Final Stage"],
     notes: "",
-    addedAt: subDays(now, 5),
+    addedAt: subDays(now, 5).toISOString(),
   },
   {
-    id: "8",
+    id: "9a872906-7b3d-44af-a0d9-866be1351bf0",
     name: "Sunita Verma",
     phone: "+91 98765 43217",
     email: "sunita@example.com",
@@ -179,6 +167,6 @@ export const INITIAL_LEADS: Array<Lead> = [
     stage: "closed",
     tags: ["Closed - Won"],
     notes: "",
-    addedAt: subDays(now, 7),
+    addedAt: subDays(now, 7).toISOString(),
   },
 ]

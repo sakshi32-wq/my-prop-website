@@ -1,8 +1,11 @@
+import { useQueryClient } from "@tanstack/react-query"
 import { SaveIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { LeadForm } from "./lead-form"
+import { optimisticLeadUpdate } from "./optimistic"
 import type { Lead } from "./data"
+import { useUpdateLead } from "@/api/generated/leads/leads"
 import {
   Dialog,
   DialogContent,
@@ -15,13 +18,22 @@ export function EditLeadDialog({
   open,
   onOpenChange,
   lead,
-  onSave,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   lead: Lead | null
-  onSave: (lead: Lead) => void
 }) {
+  const queryClient = useQueryClient()
+  const updateLead = useUpdateLead({
+    mutation: {
+      ...optimisticLeadUpdate(queryClient),
+      onSuccess: (updated) =>
+        toast.success("Lead updated", {
+          description: `${updated.name}'s details were saved.`,
+        }),
+    },
+  })
+
   return (
     <Dialog open={open && !!lead} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
@@ -38,10 +50,7 @@ export function EditLeadDialog({
             submitLabel="Save Changes"
             submitIcon={<SaveIcon data-icon="inline-start" />}
             onSubmit={(values) => {
-              onSave({ ...lead, ...values })
-              toast.success("Lead updated", {
-                description: `${values.name}'s details were saved.`,
-              })
+              updateLead.mutate({ leadId: lead.id, data: values })
               onOpenChange(false)
             }}
           />

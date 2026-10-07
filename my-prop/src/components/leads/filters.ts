@@ -2,8 +2,8 @@ import { endOfDay, format, startOfDay } from "date-fns"
 import type { DateRange } from "react-day-picker"
 
 import { sourceLabel, stageLabel } from "./data"
-import type { Lead } from "./data"
-import type { LeadSource, LeadStage } from "@/lib/mock-data"
+import type { LeadSource, LeadStage } from "./data"
+import type { ListLeadsParams } from "@/api/generated/model"
 
 export type LeadFilters = {
   sources: Array<LeadSource>
@@ -86,45 +86,34 @@ export function filterChips(filters: LeadFilters): Array<FilterChip> {
   return chips
 }
 
-function matchesSearch(lead: Lead, query: string) {
-  const q = query.trim().toLowerCase()
-  if (!q) return true
-  const isPhoneQuery = /^[\d\s+()-]+$/.test(q)
-  return (
-    lead.name.toLowerCase().includes(q) ||
-    lead.email.toLowerCase().includes(q) ||
-    lead.phone.includes(q) ||
-    (isPhoneQuery &&
-      lead.phone.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
-  )
-}
-
-function inList<T>(list: Array<T>, value: T) {
-  return list.length === 0 || list.includes(value)
-}
-
-export function applyFilters(
-  leads: Array<Lead>,
+/**
+ * Maps the toolbar's search and filter state to listLeads query params.
+ * Empty values are dropped so equal filters always produce the same query
+ * key, and no filters at all gives `undefined` (the unfiltered list's key).
+ */
+export function toListLeadsParams(
   filters: LeadFilters,
-  query: string
-) {
+  search: string
+): ListLeadsParams | undefined {
   const from = filters.dateRange?.from
-    ? startOfDay(filters.dateRange.from)
-    : undefined
-  const to = from
-    ? endOfDay(filters.dateRange?.to ?? filters.dateRange?.from ?? from)
-    : undefined
-
-  return leads.filter(
-    (lead) =>
-      matchesSearch(lead, query) &&
-      inList(filters.sources, lead.source) &&
-      inList(filters.budgets, lead.budget) &&
-      inList(filters.configurations, lead.configuration) &&
-      inList(filters.projects, lead.project) &&
-      inList(filters.stages, lead.stage) &&
-      (filters.tags.length === 0 ||
-        filters.tags.some((tag) => lead.tags.includes(tag))) &&
-      (!from || !to || (lead.addedAt >= from && lead.addedAt <= to))
+  const to = filters.dateRange?.to ?? from
+  const params: ListLeadsParams = {
+    q: search.trim() || undefined,
+    source: nonEmpty(filters.sources),
+    stage: nonEmpty(filters.stages),
+    budget: nonEmpty(filters.budgets),
+    configuration: nonEmpty(filters.configurations),
+    project: nonEmpty(filters.projects),
+    tag: nonEmpty(filters.tags),
+    addedFrom: from ? startOfDay(from).toISOString() : undefined,
+    addedTo: to ? endOfDay(to).toISOString() : undefined,
+  }
+  const entries = Object.entries(params as Record<string, unknown>).filter(
+    ([, v]) => v !== undefined
   )
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
+function nonEmpty<T>(list: Array<T>) {
+  return list.length > 0 ? list : undefined
 }

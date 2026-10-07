@@ -1,10 +1,13 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { SaveIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { LeadSummary } from "./lead-summary"
+import { optimisticLeadUpdate } from "./optimistic"
 import { CustomTagInput, RemovableTags } from "./tag-editor"
 import type { Lead } from "./data"
+import { useUpdateLead } from "@/api/generated/leads/leads"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -160,13 +163,22 @@ export function AddTagsDialog({
   open,
   onOpenChange,
   lead,
-  onSaveTags,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   lead: Lead | null
-  onSaveTags: (leadId: string, tags: Array<string>) => void
 }) {
+  const queryClient = useQueryClient()
+  const updateLead = useUpdateLead({
+    mutation: {
+      ...optimisticLeadUpdate(queryClient),
+      onSuccess: ({ name, tags }) =>
+        toast.success("Tags updated", {
+          description: `${tags.length} tag${tags.length === 1 ? "" : "s"} saved for ${name}.`,
+        }),
+    },
+  })
+
   return (
     <Dialog open={open && !!lead} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -181,10 +193,7 @@ export function AddTagsDialog({
             key={lead.id}
             lead={lead}
             onSave={(tags) => {
-              onSaveTags(lead.id, tags)
-              toast.success("Tags updated", {
-                description: `${tags.length} tag${tags.length === 1 ? "" : "s"} saved for ${lead.name}.`,
-              })
+              updateLead.mutate({ leadId: lead.id, data: { tags } })
               onOpenChange(false)
             }}
           />

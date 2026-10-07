@@ -25,6 +25,12 @@ export default [
     },
   },
   {
-    ignores: ["eslint.config.js", ".prettierrc", "reference/**"],
+    ignores: [
+      "eslint.config.js",
+      ".prettierrc",
+      "reference/**",
+      // Orval output: regenerate with `yarn api:generate` instead of editing
+      "src/api/generated/**",
+    ],
   },
 ]

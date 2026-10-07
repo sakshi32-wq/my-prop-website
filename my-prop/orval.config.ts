@@ -1,0 +1,45 @@
+import { defineConfig } from "orval"
+
+export default defineConfig({
+  api: {
+    // Swap this for the backend's schema URL once it exists.
+    input: { target: "./openapi/openapi.yaml" },
+    output: {
+      mode: "tags-split",
+      target: "src/api/generated",
+      schemas: "src/api/generated/model",
+      client: "react-query",
+      httpClient: "fetch",
+      clean: true,
+      mock: {
+        generators: [{ type: "msw", delay: false, baseUrl: "/api" }],
+      },
+      override: {
+        mutator: { path: "src/api/fetcher.ts", name: "customFetch" },
+        fetch: { includeHttpResponseReturnType: false },
+        enumGenerationType: "union",
+        query: {
+          version: 5,
+          signal: true,
+          shouldExportKeys: true,
+          mutationInvalidates: [
+            {
+              onMutations: ["createLead"],
+              invalidates: ["listLeads"],
+            },
+            {
+              onMutations: ["updateLead", "deleteLead"],
+              invalidates: [
+                "listLeads",
+                { query: "getLead", params: ["leadId"] },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    hooks: {
+      afterAllFilesWrite: "prettier --write",
+    },
+  },
+})

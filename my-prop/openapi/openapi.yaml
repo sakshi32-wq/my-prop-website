@@ -1,0 +1,324 @@
+openapi: 3.1.0
+info:
+  title: myprop.live API
+  version: 0.1.0
+  description: |
+    Schema-first contract for the myprop.live app. Until a backend exists it is
+    served by MSW (src/mocks). Paths are relative to the /api server.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: leads
+    description: CRM leads and their pipeline stage
+
+paths:
+  /leads:
+    get:
+      operationId: listLeads
+      tags: [leads]
+      summary: List leads, newest first
+      parameters:
+        - name: q
+          in: query
+          description: Matches name, email or phone (digits only for phone-like queries).
+          schema:
+            type: string
+        - name: source
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/LeadSource"
+        - name: stage
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/LeadStage"
+        - name: budget
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: configuration
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: project
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: tag
+          in: query
+          description: Leads that have at least one of these tags.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: addedFrom
+          in: query
+          description: Inclusive lower bound on addedAt.
+          schema:
+            type: string
+            format: date-time
+        - name: addedTo
+          in: query
+          description: Inclusive upper bound on addedAt.
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        "200":
+          description: Matching leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createLead
+      tags: [leads]
+      summary: Create a lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Created lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /leads/{leadId}:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    get:
+      operationId: getLead
+      tags: [leads]
+      summary: Get a lead
+      responses:
+        "200":
+          description: The lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateLead
+      tags: [leads]
+      summary: Update some fields of a lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadUpdate"
+      responses:
+        "200":
+          description: Updated lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      operationId: deleteLead
+      tags: [leads]
+      summary: Delete a lead
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    LeadId:
+      name: leadId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnprocessableEntity:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    LeadSource:
+      type: string
+      enum: [website, whatsapp, social, referral, walk-in]
+
+    LeadStage:
+      type: string
+      enum: [new, contacted, interested, scheduled, negotiation, closed, lost]
+
+    LeadInput:
+      type: object
+      description: Fields a client can set when creating a lead.
+      required: [name, phone, source]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        phone:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          description: Empty string when unknown.
+        source:
+          $ref: "#/components/schemas/LeadSource"
+        budget:
+          type: string
+        configuration:
+          type: string
+        project:
+          type: string
+        stage:
+          $ref: "#/components/schemas/LeadStage"
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+
+    LeadUpdate:
+      type: object
+      description: Partial update. Omitted fields are left unchanged.
+      properties:
+        name:
+          type: string
+          minLength: 1
+        phone:
+          type: string
+          minLength: 1
+        email:
+          type: string
+        source:
+          $ref: "#/components/schemas/LeadSource"
+        budget:
+          type: string
+        configuration:
+          type: string
+        project:
+          type: string
+        stage:
+          $ref: "#/components/schemas/LeadStage"
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+
+    Lead:
+      type: object
+      required:
+        [id, name, phone, email, source, budget, configuration, project, stage, tags, notes, addedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        source:
+          $ref: "#/components/schemas/LeadSource"
+        budget:
+          type: string
+        configuration:
+          type: string
+        project:
+          type: string
+        stage:
+          $ref: "#/components/schemas/LeadStage"
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        addedAt:
+          type: string
+          format: date-time

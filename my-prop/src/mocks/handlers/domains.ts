@@ -6,7 +6,6 @@ import { apiPath, errorResponse, isRecord, readJson } from "../utils"
 import type { Domain, Error as ErrorBody } from "@/api/generated/model"
 import { DEMO_DNS_RECORDS } from "@/components/settings/domains-data"
 import { HOSTNAME_RE } from "@/components/settings/utils"
-import { WEBSITES } from "@/lib/mock-data"
 
 type DomainParams = { domainId: string }
 
@@ -32,7 +31,10 @@ export const domainHandlers = [
         return errorResponse(422, "Enter a valid domain, e.g. example.com.")
       if (db.domains.all().some((d) => d.domain === domain))
         return errorResponse(422, "This domain has already been added.")
-      const website = WEBSITES.find((w) => w.id === body.websiteId)
+      const website =
+        typeof body.websiteId === "string"
+          ? db.websites.find(body.websiteId)
+          : undefined
       if (!website) return errorResponse(422, "Select a website that exists.")
 
       const created = db.domains.insert({

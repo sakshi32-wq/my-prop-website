@@ -1,5 +1,6 @@
-// Shared mock data and option lists. The reference app has no backend, so
-// every page reads from here (or from its own local state) instead of an API.
+// Shared option lists and demo assets. Server data (leads, campaigns,
+// websites, settings…) comes from the API, mocked in src/mocks; see
+// docs/api-rollout.md for what still uses local mock state.
 import {
   BellIcon,
   CalculatorIcon,
@@ -248,75 +249,6 @@ export const WEBSITE_TOOLS: Array<WebsiteTool> = [
     category: "utilities",
     icon: CalculatorIcon,
     enabled: false,
-  },
-]
-
-export type Website = {
-  id: string
-  name: string
-  domain: string
-  status: "live" | "draft"
-  views: number
-  leads: number
-  conversion: string
-  thumbnail: string
-  toolIds: Array<string>
-}
-
-export const WEBSITES: Array<Website> = [
-  {
-    id: "1",
-    name: "Skyline Heights",
-    domain: "skyline-heights.myprop.live",
-    status: "live",
-    views: 1245,
-    leads: 234,
-    conversion: "18.8%",
-    thumbnail: PHOTOS.building,
-    toolIds: [
-      "contact-form",
-      "whatsapp-chat",
-      "schedule-visit",
-      "google-analytics",
-    ],
-  },
-  {
-    id: "2",
-    name: "Green Valley Villas",
-    domain: "green-valley.myprop.live",
-    status: "live",
-    views: 987,
-    leads: 189,
-    conversion: "19.1%",
-    thumbnail: PHOTOS.villa,
-    toolIds: [
-      "contact-form",
-      "whatsapp-chat",
-      "emi-calculator",
-      "virtual-tour",
-    ],
-  },
-  {
-    id: "3",
-    name: "Marina Bay Apartments",
-    domain: "marina-bay.myprop.live",
-    status: "live",
-    views: 756,
-    leads: 156,
-    conversion: "20.6%",
-    thumbnail: PHOTOS.tower,
-    toolIds: ["contact-form", "live-chat", "promotion-banner", "notifications"],
-  },
-  {
-    id: "4",
-    name: "Riverside Residency",
-    domain: "riverside.myprop.live",
-    status: "draft",
-    views: 0,
-    leads: 0,
-    conversion: "0%",
-    thumbnail: PHOTOS.office,
-    toolIds: ["contact-form", "whatsapp-chat"],
   },
 ]
 

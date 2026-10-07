@@ -16,6 +16,7 @@ import {
   useCreateDomain,
   useVerifyDomain,
 } from "@/api/generated/domains/domains"
+import { useListWebsites } from "@/api/generated/websites/websites"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -46,7 +47,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { WEBSITES } from "@/lib/mock-data"
 
 const REGISTRAR_GUIDES = [
   {
@@ -107,6 +107,7 @@ function AddDomainWizard({
   const [domainName, setDomainName] = useState("")
   const [websiteId, setWebsiteId] = useState("")
   const [submitted, setSubmitted] = useState(false)
+  const websitesQuery = useListWebsites()
 
   const createDomain = useCreateDomain({
     mutation: {
@@ -178,17 +179,29 @@ function AddDomainWizard({
           </Field>
           <Field data-invalid={!!websiteError}>
             <FieldLabel htmlFor="domainWebsite">Select Website</FieldLabel>
-            <Select value={websiteId} onValueChange={setWebsiteId}>
+            <Select
+              value={websiteId}
+              onValueChange={setWebsiteId}
+              disabled={!websitesQuery.data}
+            >
               <SelectTrigger
                 id="domainWebsite"
                 className="w-full"
                 aria-invalid={!!websiteError}
               >
-                <SelectValue placeholder="Choose a website to connect" />
+                <SelectValue
+                  placeholder={
+                    websitesQuery.isError
+                      ? "Couldn't load websites"
+                      : websitesQuery.data
+                        ? "Choose a website to connect"
+                        : "Loading websites…"
+                  }
+                />
               </SelectTrigger>
               <SelectContent position="popper">
                 <SelectGroup>
-                  {WEBSITES.map((site) => (
+                  {websitesQuery.data?.map((site) => (
                     <SelectItem key={site.id} value={site.id}>
                       {site.name}
                     </SelectItem>

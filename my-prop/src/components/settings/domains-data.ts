@@ -30,7 +30,7 @@ export const DEMO_DOMAINS: Array<Domain> = [
   {
     id: "8e3f2a4b-5c6d-4e7f-9a0b-1c2d3e4f5a01",
     domain: "skylineheights.com",
-    websiteId: "1",
+    websiteId: "fbb777ab-e963-4c0a-8725-154038811399",
     websiteName: "Skyline Heights",
     status: "active",
     dnsRecords: DEMO_DNS_RECORDS,
@@ -39,7 +39,7 @@ export const DEMO_DOMAINS: Array<Domain> = [
   {
     id: "8e3f2a4b-5c6d-4e7f-9a0b-1c2d3e4f5a02",
     domain: "marinabay.in",
-    websiteId: "3",
+    websiteId: "165a0d31-936e-4d43-9c01-d8e53fd0d53b",
     websiteName: "Marina Bay Apartments",
     status: "pending",
     dnsRecords: DEMO_DNS_RECORDS,
@@ -48,7 +48,7 @@ export const DEMO_DOMAINS: Array<Domain> = [
   {
     id: "8e3f2a4b-5c6d-4e7f-9a0b-1c2d3e4f5a03",
     domain: "greenvalley.com",
-    websiteId: "2",
+    websiteId: "b8e1b63a-c8e1-4e12-b997-a0a9ec809eb9",
     websiteName: "Green Valley Villas",
     status: "active",
     dnsRecords: DEMO_DNS_RECORDS,

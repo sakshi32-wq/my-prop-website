@@ -79,6 +79,25 @@ export default defineConfig({
               ],
               invalidates: ["listIntegrations"],
             },
+            {
+              onMutations: ["createWebsite"],
+              invalidates: ["listWebsites"],
+            },
+            {
+              onMutations: ["saveWebsiteContent"],
+              invalidates: [
+                "listWebsites",
+                { query: "getWebsite", params: ["websiteId"] },
+                { query: "getWebsiteContent", params: ["websiteId"] },
+              ],
+            },
+            {
+              onMutations: ["publishWebsite"],
+              invalidates: [
+                "listWebsites",
+                { query: "getWebsite", params: ["websiteId"] },
+              ],
+            },
           ],
         },
       },

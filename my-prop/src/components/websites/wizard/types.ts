@@ -1,3 +1,4 @@
+import type { WebsiteInput } from "../data"
 import { WEBSITE_TOOLS } from "@/lib/mock-data"
 
 export type UploadedFile = {
@@ -91,4 +92,36 @@ export function formatFileSize(bytes: number) {
     units.length - 1
   )
   return `${Math.round((bytes / Math.pow(1024, index)) * 100) / 100} ${units[index]}`
+}
+
+/** Wizard answers → createWebsite body. Files are sent as metadata only. */
+export function toWebsiteInput(
+  data: WizardData,
+  files: Array<UploadedFile>
+): WebsiteInput {
+  return {
+    templateId: data.templateId,
+    info: {
+      projectName: data.projectName.trim(),
+      location: data.location.trim(),
+      description: data.description.trim(),
+      propertyType: data.propertyType,
+      configurations: data.configurations,
+      priceRange: data.priceRange,
+      amenities: data.amenities,
+      targetAudience: data.targetAudience,
+      aiTone: data.aiTone,
+      generateWithAI: data.generateWithAI,
+      uploadedFiles: files.map(({ preview: _preview, ...file }) => file),
+      additionalContent: {
+        keyHighlights: data.keyHighlights,
+        developerInfo: data.developerInfo,
+        nearbyLocations: data.nearbyLocations,
+        specialOffers: data.specialOffers,
+      },
+      enabledToolIds: Object.entries(data.tools)
+        .filter(([, enabled]) => enabled)
+        .map(([id]) => id),
+    },
+  }
 }

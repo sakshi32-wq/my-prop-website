@@ -21,7 +21,7 @@ export const getListDomainsResponseMock = (): Domain[] =>
   ).map(() => ({
     id: faker.string.uuid(),
     domain: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    websiteId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    websiteId: faker.string.uuid(),
     websiteName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     status: faker.helpers.arrayElement(["active", "pending"] as const),
     dnsRecords: Array.from(
@@ -40,7 +40,7 @@ export const getCreateDomainResponseMock = (
 ): Domain => ({
   id: faker.string.uuid(),
   domain: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  websiteId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  websiteId: faker.string.uuid(),
   websiteName: faker.string.alpha({ length: { min: 10, max: 20 } }),
   status: faker.helpers.arrayElement(["active", "pending"] as const),
   dnsRecords: Array.from(
@@ -60,7 +60,7 @@ export const getGetDomainResponseMock = (
 ): Domain => ({
   id: faker.string.uuid(),
   domain: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  websiteId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  websiteId: faker.string.uuid(),
   websiteName: faker.string.alpha({ length: { min: 10, max: 20 } }),
   status: faker.helpers.arrayElement(["active", "pending"] as const),
   dnsRecords: Array.from(
@@ -80,7 +80,7 @@ export const getVerifyDomainResponseMock = (
 ): Domain => ({
   id: faker.string.uuid(),
   domain: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  websiteId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  websiteId: faker.string.uuid(),
   websiteName: faker.string.alpha({ length: { min: 10, max: 20 } }),
   status: faker.helpers.arrayElement(["active", "pending"] as const),
   dnsRecords: Array.from(

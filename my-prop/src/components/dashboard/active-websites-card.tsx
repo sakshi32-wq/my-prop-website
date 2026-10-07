@@ -19,17 +19,24 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item"
-import { WEBSITES, unsplash } from "@/lib/mock-data"
+import { useListWebsites } from "@/api/generated/websites/websites"
+import { QueryError } from "@/components/query-error"
+import { Skeleton } from "@/components/ui/skeleton"
 
-const LIVE_WEBSITES = WEBSITES.filter((site) => site.status === "live")
+const LIVE_PARAMS = { status: ["live" as const] }
 
 export function ActiveWebsitesCard() {
+  const websitesQuery = useListWebsites(LIVE_PARAMS)
+  const liveWebsites = websitesQuery.data ?? []
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Active Websites</CardTitle>
         <CardDescription>
-          {LIVE_WEBSITES.length} websites are live and capturing leads
+          {websitesQuery.isSuccess
+            ? `${liveWebsites.length} websites are live and capturing leads`
+            : "Your live websites"}
         </CardDescription>
         <CardAction>
           <Button variant="outline" size="sm" asChild>
@@ -38,16 +45,23 @@ export function ActiveWebsitesCard() {
         </CardAction>
       </CardHeader>
       <CardContent>
+        {websitesQuery.isError && (
+          <QueryError
+            title="Couldn't load websites"
+            error={websitesQuery.error}
+            onRetry={() => void websitesQuery.refetch()}
+          />
+        )}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {LIVE_WEBSITES.map((site) => (
+          {websitesQuery.isPending &&
+            Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-28 rounded-lg" />
+            ))}
+          {liveWebsites.map((site) => (
             <Item key={site.id} variant="outline" asChild>
               <Link to="/app/websites">
                 <ItemMedia variant="image">
-                  <img
-                    src={unsplash(site.thumbnail, 120, 120)}
-                    alt=""
-                    loading="lazy"
-                  />
+                  <img src={site.thumbnailUrl} alt="" loading="lazy" />
                 </ItemMedia>
                 <ItemContent className="min-w-0">
                   <ItemTitle>{site.name}</ItemTitle>

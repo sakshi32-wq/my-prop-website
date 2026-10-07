@@ -29,8 +29,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { WEBSITE_TOOLS, unsplash } from "@/lib/mock-data"
-import type { Website } from "@/lib/mock-data"
+import { formatConversion } from "./data"
+import type { Website } from "./data"
+import { WEBSITE_TOOLS } from "@/lib/mock-data"
 
 async function copyDomain(domain: string) {
   try {
@@ -77,7 +78,7 @@ export function WebsiteCard({
     <Card className="pt-0">
       <AspectRatio ratio={16 / 10} className="bg-muted">
         <img
-          src={unsplash(site.thumbnail, 600, 375)}
+          src={site.thumbnailUrl}
           alt={site.name}
           loading="lazy"
           className="size-full object-cover"
@@ -119,7 +120,11 @@ export function WebsiteCard({
             label="Leads"
             value={site.leads.toLocaleString()}
           />
-          <Stat icon={ChartColumnIcon} label="CVR" value={site.conversion} />
+          <Stat
+            icon={ChartColumnIcon}
+            label="CVR"
+            value={formatConversion(site.conversionRate)}
+          />
         </div>
         <Separator />
         <div className="flex flex-col gap-2">

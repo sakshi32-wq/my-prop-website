@@ -8,6 +8,7 @@ import {
   verifyDomain,
 } from "@/api/generated/domains/domains"
 import { DEMO_DOMAINS } from "@/components/settings/domains-data"
+import { DEMO_WEBSITES } from "@/components/websites/data"
 
 describe("domains mock API", () => {
   it("lists oldest first", async () => {
@@ -19,7 +20,7 @@ describe("domains mock API", () => {
   it("creates a pending domain with DNS records, verifies and deletes", async () => {
     const created = await createDomain({
       domain: " New-Site.COM ",
-      websiteId: "4",
+      websiteId: DEMO_WEBSITES[3].id,
     })
     expect(created).toMatchObject({
       domain: "new-site.com",
@@ -35,10 +36,10 @@ describe("domains mock API", () => {
 
   it("rejects invalid, duplicate and unknown-website domains", async () => {
     await expect(
-      createDomain({ domain: "https://x.com", websiteId: "1" })
+      createDomain({ domain: "https://x.com", websiteId: DEMO_WEBSITES[0].id })
     ).rejects.toMatchObject({ status: 422 })
     await expect(
-      createDomain({ domain: "marinabay.in", websiteId: "1" })
+      createDomain({ domain: "marinabay.in", websiteId: DEMO_WEBSITES[0].id })
     ).rejects.toMatchObject({
       status: 422,
       message: "This domain has already been added.",

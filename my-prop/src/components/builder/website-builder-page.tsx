@@ -1,5 +1,6 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react"
-import { formatDistanceToNow } from "date-fns"
+import { useEffect, useEffectEvent, useState } from "react"
+import { Link } from "@tanstack/react-router"
+import { ArrowLeftIcon, GlobeIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -18,11 +19,31 @@ import { EditWebsiteInfoDialog } from "./edit-website-info-dialog"
 import { PreviewDialog } from "./preview-dialog"
 import { PropertiesPanel } from "./properties-panel"
 import { SectionsPanel } from "./sections-panel"
-import { loadDraft, saveDraft, serializableInfo } from "./storage"
+import { createDefaultSections } from "./section-templates"
+import { isSectionArray } from "./tree-utils"
 import type { Section } from "./types"
 import { useBuilderState } from "./use-builder-state"
-import { createDefaultWebsiteInfo, getWebsiteMeta } from "./website-info"
+import { serializableInfo } from "./website-info"
 import type { WebsiteInfo } from "./website-info"
+import { ApiError } from "@/api/fetcher"
+import {
+  useGetWebsite,
+  useGetWebsiteContent,
+  usePublishWebsite,
+  useSaveWebsiteContent,
+} from "@/api/generated/websites/websites"
+import type { Website, WebsiteContent } from "@/api/generated/model"
+import { QueryError } from "@/components/query-error"
+import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type Snapshot = { sections: Array<Section>; info: WebsiteInfo }
 
@@ -43,50 +64,122 @@ function slugify(value: string) {
   )
 }
 
+/** Loads the website and its saved content, then mounts the editor. */
 export function WebsiteBuilderPage({ websiteId }: { websiteId: string }) {
-  const builder = useBuilderState()
-  const { sections, undo, redo, resetSections, select } = builder
-  const { domain } = getWebsiteMeta(websiteId)
-  const [info, setInfo] = useState(() => createDefaultWebsiteInfo(websiteId))
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const websiteQuery = useGetWebsite(websiteId)
+  const contentQuery = useGetWebsiteContent(websiteId)
+
+  if (websiteQuery.isSuccess && contentQuery.isSuccess)
+    return (
+      <BuilderEditor website={websiteQuery.data} content={contentQuery.data} />
+    )
+
+  const error = websiteQuery.error ?? contentQuery.error
+  if (error instanceof ApiError && error.status === 404)
+    return (
+      <div className="flex h-svh items-center justify-center p-4">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <GlobeIcon />
+            </EmptyMedia>
+            <EmptyTitle>Website not found</EmptyTitle>
+            <EmptyDescription>
+              It may have been deleted, or the link is wrong.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" asChild>
+              <Link to="/app/websites">
+                <ArrowLeftIcon data-icon="inline-start" />
+                Back to websites
+              </Link>
+            </Button>
+          </EmptyContent>
+        </Empty>
+      </div>
+    )
+
+  if (error)
+    return (
+      <div className="flex h-svh items-center justify-center p-4">
+        <QueryError
+          className="max-w-lg"
+          title="Couldn't open the website builder"
+          error={error}
+          onRetry={() => {
+            void websiteQuery.refetch()
+            void contentQuery.refetch()
+          }}
+        />
+      </div>
+    )
+
+  return (
+    <div
+      className="flex h-svh flex-col"
+      aria-busy="true"
+      aria-label="Loading website builder"
+    >
+      <Skeleton className="h-14 rounded-none" />
+      <div className="flex min-h-0 flex-1 gap-4 p-4">
+        <Skeleton className="hidden w-64 lg:block" />
+        <Skeleton className="flex-1" />
+        <Skeleton className="hidden w-72 lg:block" />
+      </div>
+    </div>
+  )
+}
+
+function BuilderEditor({
+  website,
+  content,
+}: {
+  website: Website
+  content: WebsiteContent
+}) {
+  const websiteId = website.id
+  const { domain } = website
+  // The loaded state is the "saved" snapshot, so the editor starts clean.
+  const [loaded] = useState(() => {
+    const valid = content.sections === null || isSectionArray(content.sections)
+    return {
+      valid,
+      snapshot: {
+        sections: isSectionArray(content.sections)
+          ? content.sections
+          : createDefaultSections(),
+        info: content.info,
+      } satisfies Snapshot,
+    }
+  })
+  const builder = useBuilderState(() => loaded.snapshot.sections)
+  const { sections, undo, redo } = builder
+  const [info, setInfo] = useState<WebsiteInfo>(loaded.snapshot.info)
+  const [snapshot, setSnapshot] = useState<Snapshot>(loaded.snapshot)
   const [panel, setPanel] = useState<"sections" | "properties" | null>(null)
   const [editInfoOpen, setEditInfoOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
 
-  const dirty =
-    snapshot !== null &&
-    (snapshot.sections !== sections || snapshot.info !== info)
+  const saveContent = useSaveWebsiteContent()
+  const publishWebsite = usePublishWebsite({
+    mutation: {
+      onSuccess: (site) =>
+        toast.success("Website published", {
+          description: `Your changes are live at ${site.domain}`,
+        }),
+    },
+  })
 
-  // Restore the saved draft for this website (client only).
-  const restoreDraft = useEffectEvent(() => {
-    try {
-      const draft = loadDraft(websiteId, info)
-      if (!draft) {
-        setSnapshot({ sections, info })
-        return
-      }
-      resetSections(draft.sections)
-      setInfo(draft.info)
-      select(draft.sections.at(0)?.id ?? null)
-      setSnapshot({ sections: draft.sections, info: draft.info })
-      toast("Restored your saved draft", {
-        description: draft.savedAt
-          ? `Last saved ${formatDistanceToNow(new Date(draft.savedAt), { addSuffix: true })}`
-          : undefined,
-      })
-    } catch {
-      setSnapshot({ sections, info })
-      toast.error("Couldn't load your saved draft", {
+  const dirty = snapshot.sections !== sections || snapshot.info !== info
+
+  const warnInvalidLayout = useEffectEvent(() => {
+    if (!loaded.valid)
+      toast.error("Couldn't load your saved layout", {
         description: "Starting from the default layout instead.",
       })
-    }
   })
-  const restored = useRef(false)
-  useEffect(() => {
-    if (restored.current) return
-    restored.current = true
-    restoreDraft()
-  }, [])
+  useEffect(() => warnInvalidLayout(), [])
 
   // Sheets are only for small screens; close them when the layout widens.
   useEffect(() => {
@@ -98,18 +191,24 @@ export function WebsiteBuilderPage({ websiteId }: { websiteId: string }) {
     return () => query.removeEventListener("change", onChange)
   }, [])
 
-  function save({ silent = false } = {}) {
-    try {
-      saveDraft(websiteId, sections, info)
-      setSnapshot({ sections, info })
-      if (!silent) toast.success("Website saved")
-      return true
-    } catch {
-      toast.error("Couldn't save", {
-        description: "Your browser storage may be full or disabled.",
-      })
-      return false
-    }
+  function save({
+    silent = false,
+    onSaved,
+  }: { silent?: boolean; onSaved?: () => void } = {}) {
+    const saved = { sections, info }
+    saveContent.mutate(
+      {
+        websiteId,
+        data: { info: serializableInfo(info), sections },
+      },
+      {
+        onSuccess: () => {
+          setSnapshot(saved)
+          if (!silent) toast.success("Website saved")
+          onSaved?.()
+        },
+      }
+    )
   }
 
   function publish() {
@@ -117,9 +216,10 @@ export function WebsiteBuilderPage({ websiteId }: { websiteId: string }) {
       toast.error("Add at least one section before publishing")
       return
     }
-    if (!save({ silent: true })) return
-    toast.success("Website published", {
-      description: `Your changes are live at ${domain}`,
+    // Publishing makes the saved content live, so save first.
+    save({
+      silent: true,
+      onSaved: () => publishWebsite.mutate({ websiteId }),
     })
   }
 
@@ -149,7 +249,7 @@ export function WebsiteBuilderPage({ websiteId }: { websiteId: string }) {
     const key = event.key.toLowerCase()
     if (key === "s") {
       event.preventDefault()
-      save()
+      if (!saveContent.isPending) save()
       return
     }
     // Leave native text undo alone while typing in a field.
@@ -186,6 +286,8 @@ export function WebsiteBuilderPage({ websiteId }: { websiteId: string }) {
           name={info.projectName}
           domain={domain}
           dirty={dirty}
+          saving={saveContent.isPending}
+          publishing={publishWebsite.isPending}
           onSave={() => save()}
           onPreview={() => setPreviewOpen(true)}
           onPublish={publish}

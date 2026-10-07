@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
+import { Spinner } from "@/components/ui/spinner"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Tooltip,
@@ -92,6 +93,8 @@ export function BuilderTopBar({
   name,
   domain,
   dirty,
+  saving = false,
+  publishing = false,
   onSave,
   onPreview,
   onPublish,
@@ -101,6 +104,8 @@ export function BuilderTopBar({
   name: string
   domain: string
   dirty: boolean
+  saving?: boolean
+  publishing?: boolean
   onSave: () => void
   onPreview: () => void
   onPublish: () => void
@@ -185,8 +190,18 @@ export function BuilderTopBar({
 
       <Separator orientation="vertical" className="my-3 hidden md:block" />
 
-      <Button variant="outline" size="sm" onClick={onSave} aria-label="Save">
-        <SaveIcon data-icon="inline-start" />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onSave}
+        disabled={saving || publishing}
+        aria-label="Save"
+      >
+        {saving ? (
+          <Spinner data-icon="inline-start" />
+        ) : (
+          <SaveIcon data-icon="inline-start" />
+        )}
         <span className="hidden xl:inline">Save</span>
       </Button>
       <Button
@@ -198,8 +213,17 @@ export function BuilderTopBar({
         <EyeIcon data-icon="inline-start" />
         <span className="hidden xl:inline">Preview</span>
       </Button>
-      <Button size="sm" onClick={onPublish} aria-label="Publish">
-        <GlobeIcon data-icon="inline-start" />
+      <Button
+        size="sm"
+        onClick={onPublish}
+        disabled={saving || publishing}
+        aria-label="Publish"
+      >
+        {publishing ? (
+          <Spinner data-icon="inline-start" />
+        ) : (
+          <GlobeIcon data-icon="inline-start" />
+        )}
         <span className="hidden sm:inline">Publish</span>
       </Button>
       <Button

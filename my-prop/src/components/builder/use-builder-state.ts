@@ -20,8 +20,10 @@ export type ElementPatch = {
   styles?: CSSProperties
 }
 
-export function useBuilderState() {
-  const history = useHistory<Array<Section>>(createDefaultSections)
+export function useBuilderState(
+  initialSections: () => Array<Section> = createDefaultSections
+) {
+  const history = useHistory<Array<Section>>(initialSections)
   const sections = history.value
   const { commit, undo, redo } = history
 

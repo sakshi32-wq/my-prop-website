@@ -22,6 +22,8 @@ tags:
     description: Keys for calling the myprop.live API from other systems
   - name: integrations
     description: Third-party services the workspace connects to
+  - name: websites
+    description: Property websites and their builder content
 
 paths:
   /leads:
@@ -626,6 +628,135 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
+  /websites:
+    get:
+      operationId: listWebsites
+      tags: [websites]
+      summary: List websites, oldest first
+      parameters:
+        - name: status
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/WebsiteStatus"
+      responses:
+        "200":
+          description: Matching websites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Website"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createWebsite
+      tags: [websites]
+      summary: Create a draft website from the wizard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebsiteInput"
+      responses:
+        "201":
+          description: The new draft website
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Website"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /websites/{websiteId}:
+    parameters:
+      - $ref: "#/components/parameters/WebsiteId"
+    get:
+      operationId: getWebsite
+      tags: [websites]
+      summary: Get a website
+      responses:
+        "200":
+          description: The website
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Website"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /websites/{websiteId}/content:
+    parameters:
+      - $ref: "#/components/parameters/WebsiteId"
+    get:
+      operationId: getWebsiteContent
+      tags: [websites]
+      summary: The builder document (project info and page sections)
+      responses:
+        "200":
+          description: The saved content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebsiteContent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: saveWebsiteContent
+      tags: [websites]
+      summary: Save the builder document. Also renames the website and updates its tools.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebsiteContentInput"
+      responses:
+        "200":
+          description: The saved content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebsiteContent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /websites/{websiteId}/publish:
+    parameters:
+      - $ref: "#/components/parameters/WebsiteId"
+    post:
+      operationId: publishWebsite
+      tags: [websites]
+      summary: Publish the saved content (the website becomes live)
+      responses:
+        "200":
+          description: The live website
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Website"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -633,6 +764,13 @@ components:
       scheme: bearer
 
   parameters:
+    WebsiteId:
+      name: websiteId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     IntegrationId:
       name: integrationId
       in: path
@@ -1059,6 +1197,7 @@ components:
           description: Bare hostname, without protocol or path.
         websiteId:
           type: string
+          format: uuid
           description: The website this domain points to.
 
     Domain:
@@ -1073,6 +1212,7 @@ components:
           format: hostname
         websiteId:
           type: string
+          format: uuid
         websiteName:
           type: string
         status:
@@ -1170,3 +1310,168 @@ components:
           type: boolean
         message:
           type: string
+
+    WebsiteStatus:
+      type: string
+      enum: [live, draft]
+
+    WebsiteFile:
+      type: object
+      description: Metadata of a file attached to the website (uploads aren't implemented yet).
+      required: [id, name, size, type]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        size:
+          type: integer
+          minimum: 0
+        type:
+          type: string
+          description: MIME type
+
+    WebsiteAdditionalContent:
+      type: object
+      required: [keyHighlights, developerInfo, nearbyLocations, specialOffers]
+      properties:
+        keyHighlights:
+          type: string
+        developerInfo:
+          type: string
+        nearbyLocations:
+          type: string
+        specialOffers:
+          type: string
+
+    WebsiteInfo:
+      type: object
+      description: Project information the website is generated from.
+      required:
+        [projectName, location, description, propertyType, configurations, priceRange, amenities, targetAudience, aiTone, generateWithAI, uploadedFiles, additionalContent, enabledToolIds]
+      properties:
+        projectName:
+          type: string
+          minLength: 1
+        location:
+          type: string
+        description:
+          type: string
+        propertyType:
+          type: string
+        configurations:
+          type: array
+          items:
+            type: string
+        priceRange:
+          type: string
+        amenities:
+          type: array
+          items:
+            type: string
+        targetAudience:
+          type: string
+        aiTone:
+          type: string
+        generateWithAI:
+          type: boolean
+        uploadedFiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebsiteFile"
+        additionalContent:
+          $ref: "#/components/schemas/WebsiteAdditionalContent"
+        enabledToolIds:
+          type: array
+          description: Ids from the website tools catalog.
+          items:
+            type: string
+
+    WebsiteSection:
+      type: object
+      description: |
+        One page section of the builder document. Its shape belongs to the
+        builder (src/components/builder/types.ts), so the API stores it as-is.
+      additionalProperties: true
+
+    WebsiteInput:
+      type: object
+      required: [templateId, info]
+      properties:
+        templateId:
+          type: string
+        info:
+          $ref: "#/components/schemas/WebsiteInfo"
+
+    Website:
+      type: object
+      required:
+        [id, name, domain, status, thumbnailUrl, views, leads, conversionRate, toolIds, templateId, createdAt, updatedAt, publishedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        domain:
+          type: string
+          format: hostname
+          description: The website's myprop.live address.
+        status:
+          $ref: "#/components/schemas/WebsiteStatus"
+        thumbnailUrl:
+          type: string
+          format: uri
+        views:
+          type: integer
+          minimum: 0
+        leads:
+          type: integer
+          minimum: 0
+        conversionRate:
+          type: number
+          description: Leads per 100 views.
+        toolIds:
+          type: array
+          items:
+            type: string
+        templateId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type: [string, "null"]
+          format: date-time
+
+    WebsiteContentInput:
+      type: object
+      required: [info, sections]
+      properties:
+        info:
+          $ref: "#/components/schemas/WebsiteInfo"
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebsiteSection"
+
+    WebsiteContent:
+      type: object
+      required: [websiteId, info, sections, savedAt]
+      properties:
+        websiteId:
+          type: string
+          format: uuid
+        info:
+          $ref: "#/components/schemas/WebsiteInfo"
+        sections:
+          description: null until the builder saves for the first time; the builder then starts from its default layout.
+          type: [array, "null"]
+          items:
+            $ref: "#/components/schemas/WebsiteSection"
+        savedAt:
+          type: [string, "null"]
+          format: date-time

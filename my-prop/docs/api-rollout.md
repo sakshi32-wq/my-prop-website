@@ -26,7 +26,7 @@ reference implementation for everything below.
 | 3 | domains | `settings/domains-tab.tsx` (`INITIAL_DOMAINS`) | ✅ done |
 | 4 | api-keys | `settings/api-keys-card.tsx` (`INITIAL_KEYS`) | ✅ done |
 | 5 | integrations | `settings/integrations-tab.tsx` (`INITIAL_CONNECTED`) | ✅ done |
-| 6 | websites | `routes/app.websites.tsx`, `dashboard/active-websites-card.tsx`, `builder/storage.ts` (localStorage) | ⬜ |
+| 6 | websites | `routes/app.websites.tsx`, `dashboard/active-websites-card.tsx`, `builder/storage.ts` (localStorage) | ✅ done |
 | 7 | templates | `routes/app.templates.tsx` (`TEMPLATES`) | ⬜ |
 | 8 | profile | `settings/profile-info-card.tsx`, `notifications-card.tsx` | ⬜ |
 | 9 | analytics | `analytics/*`, `dashboard/kpi-cards.tsx` and charts (read-only) | ⬜ |
@@ -99,10 +99,8 @@ Follow the Leads files as the template for each step.
   the DNS records come from the server. The DNS step has no "Back" button any more,
   because the domain already exists by then. Verify is `POST /domains/{id}/verify`;
   the mock never activates a domain because there's no DNS behind it.
-  **Follow-up for websites (#6):** `Domain.websiteId` is a plain string that matches
-  the current `WEBSITES` ids (`"1"`–`"4"`). When websites move to the API, make it
-  `format: uuid`, re-seed `DEMO_DOMAINS` with the new website ids, and have the mock
-  look websites up in `db.websites` instead of `WEBSITES`.
+  `Domain.websiteId` is a website UUID, and the website picker loads from
+  `listWebsites` (done with #6).
 - **api-keys (behaviour change, needs sign-off):** like a real API, the secret is only
   returned by `POST /api-keys`. The list returns a masked `preview`, so the
   Reveal/Hide and list-level Copy buttons were removed. The create dialog still shows
@@ -116,3 +114,14 @@ Follow the Leads files as the template for each step.
   in full by `GET /integrations`. A real API may want those fields write-only, with
   the form showing a "saved" placeholder instead. `useSimulatedRequest` was removed
   because nothing uses it any more.
+- **websites:** `WEBSITES` moved out of `lib/mock-data` into `websites/data.ts` as seed
+  data. The wizard now `POST`s `/websites` and opens the builder at the new id (it used
+  to go to `/builder/new`). The builder loads `GET /websites/{id}` and
+  `/websites/{id}/content`, saves with `PUT .../content`, and publishes with
+  `POST .../publish`, which needs saved sections. It no longer uses `localStorage`:
+  `builder/storage.ts` and the "restored your draft" toast are gone. Page sections
+  are an opaque JSON document to the API (`WebsiteSection` with
+  `additionalProperties`); the builder still checks them with `isSectionArray`.
+  Uploaded files are sent as metadata only, because there is no upload endpoint yet.
+  The Lighthouse report is still simulated. Component tests that need `Link` or
+  `useNavigate` use `renderWithRouter` from `src/test/render.tsx`.

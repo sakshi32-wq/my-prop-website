@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { useCreateWebsite } from "@/api/generated/websites/websites"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
+import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 
 import { StepAdditionalContent } from "./wizard/step-additional-content"
@@ -22,7 +24,12 @@ import { StepBasicInfo } from "./wizard/step-basic-info"
 import { StepPropertyType } from "./wizard/step-property-type"
 import { StepTemplate } from "./wizard/step-template"
 import { StepWebsiteTools } from "./wizard/step-website-tools"
-import { WIZARD_STEPS, createInitialData, validateStep } from "./wizard/types"
+import {
+  WIZARD_STEPS,
+  createInitialData,
+  toWebsiteInput,
+  validateStep,
+} from "./wizard/types"
 import type { UploadedFile, WizardData } from "./wizard/types"
 
 const TOTAL_STEPS = WIZARD_STEPS.length
@@ -52,6 +59,20 @@ function WizardBody({ onClose }: { onClose: () => void }) {
   const [attempted, setAttempted] = useState<Array<number>>([])
   const [files, setFiles] = useState<Array<UploadedFile>>([])
   const bodyRef = useRef<HTMLDivElement>(null)
+  const createWebsite = useCreateWebsite({
+    mutation: {
+      onSuccess: (website) => {
+        toast.success(`"${website.name}" created`, {
+          description: "Opening the website builder…",
+        })
+        onClose()
+        void navigate({
+          to: "/app/websites/$id/builder",
+          params: { id: website.id },
+        })
+      },
+    },
+  })
 
   // Revoke any remaining preview URLs when the wizard unmounts.
   const filesRef = useRef(files)
@@ -86,11 +107,7 @@ function WizardBody({ onClose }: { onClose: () => void }) {
       goTo(step + 1)
       return
     }
-    toast.success(`Creating "${data.projectName}"`, {
-      description: "Opening the website builder…",
-    })
-    onClose()
-    void navigate({ to: "/app/websites/$id/builder", params: { id: "new" } })
+    createWebsite.mutate({ data: toWebsiteInput(data, files) })
   }
 
   function addFiles(selected: Array<File>) {
@@ -193,10 +210,14 @@ function WizardBody({ onClose }: { onClose: () => void }) {
           <ChevronLeftIcon data-icon="inline-start" />
           Back
         </Button>
-        <Button onClick={handleNext}>
+        <Button onClick={handleNext} disabled={createWebsite.isPending}>
           {step === TOTAL_STEPS ? (
             <>
-              <SparklesIcon data-icon="inline-start" />
+              {createWebsite.isPending ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <SparklesIcon data-icon="inline-start" />
+              )}
               Create Website
             </>
           ) : (

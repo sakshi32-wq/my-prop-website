@@ -6,6 +6,8 @@ import tailwindcss from "@tailwindcss/vite"
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  // recharts imports named exports from react-is (CommonJS), so pre-bundle both
+  optimizeDeps: { include: ["react-is", "recharts"] },
   plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
 })
 

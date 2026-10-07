@@ -10,33 +10,209 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as BuilderRouteImport } from './routes/builder'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAiStudioRouteImport } from './routes/app.ai-studio'
+import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
+import { Route as AppCampaignsRouteImport } from './routes/app.campaigns'
+import { Route as AppLeadsRouteImport } from './routes/app.leads'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppTemplatesRouteImport } from './routes/app.templates'
+import { Route as AppWebsitesRouteImport } from './routes/app.websites'
+import { Route as AppWebsitesIdBuilderRouteImport } from './routes/app_.websites.$id.builder'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuilderRoute = BuilderRouteImport.update({
+  id: '/builder',
+  path: '/builder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiStudioRoute = AppAiStudioRouteImport.update({
+  id: '/ai-studio',
+  path: '/ai-studio',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCampaignsRoute = AppCampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeadsRoute = AppLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTemplatesRoute = AppTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWebsitesRoute = AppWebsitesRouteImport.update({
+  id: '/websites',
+  path: '/websites',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWebsitesIdBuilderRoute = AppWebsitesIdBuilderRouteImport.update({
+  id: '/app_/websites/$id/builder',
+  path: '/app/websites/$id/builder',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/builder': typeof BuilderRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/app/ai-studio': typeof AppAiStudioRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/campaigns': typeof AppCampaignsRoute
+  '/app/leads': typeof AppLeadsRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/templates': typeof AppTemplatesRoute
+  '/app/websites': typeof AppWebsitesRoute
+  '/app/': typeof AppIndexRoute
+  '/app/websites/$id/builder': typeof AppWebsitesIdBuilderRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/builder': typeof BuilderRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/app/ai-studio': typeof AppAiStudioRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/campaigns': typeof AppCampaignsRoute
+  '/app/leads': typeof AppLeadsRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/templates': typeof AppTemplatesRoute
+  '/app/websites': typeof AppWebsitesRoute
+  '/app': typeof AppIndexRoute
+  '/app/websites/$id/builder': typeof AppWebsitesIdBuilderRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/builder': typeof BuilderRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/app/ai-studio': typeof AppAiStudioRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/campaigns': typeof AppCampaignsRoute
+  '/app/leads': typeof AppLeadsRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/templates': typeof AppTemplatesRoute
+  '/app/websites': typeof AppWebsitesRoute
+  '/app/': typeof AppIndexRoute
+  '/app_/websites/$id/builder': typeof AppWebsitesIdBuilderRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/builder'
+    | '/forgot-password'
+    | '/login'
+    | '/register'
+    | '/app/ai-studio'
+    | '/app/analytics'
+    | '/app/campaigns'
+    | '/app/leads'
+    | '/app/settings'
+    | '/app/templates'
+    | '/app/websites'
+    | '/app/'
+    | '/app/websites/$id/builder'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/builder'
+    | '/forgot-password'
+    | '/login'
+    | '/register'
+    | '/app/ai-studio'
+    | '/app/analytics'
+    | '/app/campaigns'
+    | '/app/leads'
+    | '/app/settings'
+    | '/app/templates'
+    | '/app/websites'
+    | '/app'
+    | '/app/websites/$id/builder'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/builder'
+    | '/forgot-password'
+    | '/login'
+    | '/register'
+    | '/app/ai-studio'
+    | '/app/analytics'
+    | '/app/campaigns'
+    | '/app/leads'
+    | '/app/settings'
+    | '/app/templates'
+    | '/app/websites'
+    | '/app/'
+    | '/app_/websites/$id/builder'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  BuilderRoute: typeof BuilderRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
+  AppWebsitesIdBuilderRoute: typeof AppWebsitesIdBuilderRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +224,139 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/builder': {
+      id: '/builder'
+      path: '/builder'
+      fullPath: '/builder'
+      preLoaderRoute: typeof BuilderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/ai-studio': {
+      id: '/app/ai-studio'
+      path: '/ai-studio'
+      fullPath: '/app/ai-studio'
+      preLoaderRoute: typeof AppAiStudioRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/analytics': {
+      id: '/app/analytics'
+      path: '/analytics'
+      fullPath: '/app/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/campaigns': {
+      id: '/app/campaigns'
+      path: '/campaigns'
+      fullPath: '/app/campaigns'
+      preLoaderRoute: typeof AppCampaignsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/leads': {
+      id: '/app/leads'
+      path: '/leads'
+      fullPath: '/app/leads'
+      preLoaderRoute: typeof AppLeadsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/templates': {
+      id: '/app/templates'
+      path: '/templates'
+      fullPath: '/app/templates'
+      preLoaderRoute: typeof AppTemplatesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/websites': {
+      id: '/app/websites'
+      path: '/websites'
+      fullPath: '/app/websites'
+      preLoaderRoute: typeof AppWebsitesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app_/websites/$id/builder': {
+      id: '/app_/websites/$id/builder'
+      path: '/app/websites/$id/builder'
+      fullPath: '/app/websites/$id/builder'
+      preLoaderRoute: typeof AppWebsitesIdBuilderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppAiStudioRoute: typeof AppAiStudioRoute
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppCampaignsRoute: typeof AppCampaignsRoute
+  AppLeadsRoute: typeof AppLeadsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppTemplatesRoute: typeof AppTemplatesRoute
+  AppWebsitesRoute: typeof AppWebsitesRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAiStudioRoute: AppAiStudioRoute,
+  AppAnalyticsRoute: AppAnalyticsRoute,
+  AppCampaignsRoute: AppCampaignsRoute,
+  AppLeadsRoute: AppLeadsRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppTemplatesRoute: AppTemplatesRoute,
+  AppWebsitesRoute: AppWebsitesRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  BuilderRoute: BuilderRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
+  AppWebsitesIdBuilderRoute: AppWebsitesIdBuilderRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -2,6 +2,8 @@ import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 
+import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
@@ -15,7 +17,12 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "TanStack Start Starter",
+        title: "myprop.live — AI Real Estate Website Builder",
+      },
+      {
+        name: "description",
+        content:
+          "Create real estate websites and automate marketing with AI-driven tools for developers, brokers, and channel partners.",
       },
     ],
     links: [
@@ -41,7 +48,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <TooltipProvider>{children}</TooltipProvider>
+        <Toaster />
         <TanStackDevtools
           config={{
             position: "bottom-right",

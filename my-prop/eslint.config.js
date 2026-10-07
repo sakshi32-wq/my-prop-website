@@ -16,6 +16,15 @@ export default [
     },
   },
   {
-    ignores: ["eslint.config.js", ".prettierrc"],
+    // shadcn source files: keep them as the CLI generates them
+    files: ["src/components/ui/**"],
+    rules: {
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
+      "no-shadow": "off",
+    },
+  },
+  {
+    ignores: ["eslint.config.js", ".prettierrc", "reference/**"],
   },
 ]

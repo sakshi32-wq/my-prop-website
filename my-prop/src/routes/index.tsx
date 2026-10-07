@@ -1,19 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { Button } from "@/components/ui/button"
 
-export const Route = createFileRoute("/")({ component: App })
+import { CtaSection } from "@/components/marketing/cta-section"
+import { FeaturesSection } from "@/components/marketing/features-section"
+import { HeroSection } from "@/components/marketing/hero-section"
+import { HowItWorksSection } from "@/components/marketing/how-it-works-section"
+import { PricingSection } from "@/components/marketing/pricing-section"
+import { SiteFooter } from "@/components/marketing/site-footer"
+import { SiteHeader } from "@/components/marketing/site-header"
+import { TemplatesSection } from "@/components/marketing/templates-section"
 
-function App() {
+export const Route = createFileRoute("/")({ component: LandingPage })
+
+function LandingPage() {
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-      </div>
+    <div className="flex min-h-svh flex-col bg-background">
+      <SiteHeader />
+      <main className="flex-1">
+        <HeroSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <TemplatesSection />
+        <PricingSection />
+        <CtaSection />
+      </main>
+      <SiteFooter />
     </div>
   )
 }

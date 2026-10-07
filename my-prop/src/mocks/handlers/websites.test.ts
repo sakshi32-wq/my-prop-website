@@ -8,7 +8,10 @@ import {
   publishWebsite,
   saveWebsiteContent,
 } from "@/api/generated/websites/websites"
+import { DEMO_TEMPLATES } from "@/components/templates/template-data"
 import { DEMO_WEBSITES, emptyWebsiteInfo } from "@/components/websites/data"
+
+const TEMPLATE_ID = DEMO_TEMPLATES[1].id
 
 describe("websites mock API", () => {
   it("lists oldest first and filters by status", async () => {
@@ -20,7 +23,7 @@ describe("websites mock API", () => {
 
   it("creates a draft with a unique domain and empty layout", async () => {
     const info = emptyWebsiteInfo("Skyline Heights")
-    const created = await createWebsite({ templateId: "2", info })
+    const created = await createWebsite({ templateId: TEMPLATE_ID, info })
     expect(created).toMatchObject({
       status: "draft",
       domain: "skyline-heights-2.myprop.live",
@@ -55,7 +58,7 @@ describe("websites mock API", () => {
 
   it("rejects bad bodies and unknown websites", async () => {
     await expect(
-      createWebsite({ templateId: "1", info: emptyWebsiteInfo(" ") })
+      createWebsite({ templateId: TEMPLATE_ID, info: emptyWebsiteInfo(" ") })
     ).rejects.toMatchObject({
       status: 422,
       message: "Project name is required.",

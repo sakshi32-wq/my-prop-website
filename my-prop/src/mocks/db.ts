@@ -7,6 +7,7 @@ import type {
   Integration,
   Lead,
   TeamMember,
+  Template,
   Website,
   WebsiteContent,
 } from "@/api/generated/model"
@@ -16,6 +17,7 @@ import { DEMO_API_KEYS } from "@/components/settings/api-keys-data"
 import { DEMO_DOMAINS } from "@/components/settings/domains-data"
 import { DEMO_INTEGRATIONS } from "@/components/settings/integrations-data"
 import { DEMO_TEAM_MEMBERS } from "@/components/settings/team-data"
+import { DEMO_TEMPLATES } from "@/components/templates/template-data"
 import { DEMO_WEBSITES, demoWebsiteInfo } from "@/components/websites/data"
 
 /** Builder content is keyed by its website's id. */
@@ -59,6 +61,7 @@ export const db = {
   domains: createTable<Domain>(() => DEMO_DOMAINS),
   apiKeys: createTable<ApiKey>(() => DEMO_API_KEYS),
   integrations: createTable<Integration>(() => DEMO_INTEGRATIONS),
+  templates: createTable<Template>(() => DEMO_TEMPLATES),
   websites: createTable<Website>(() => DEMO_WEBSITES),
   websiteContents: createTable<StoredWebsiteContent>(() =>
     DEMO_WEBSITES.map((website) => ({
@@ -77,6 +80,7 @@ export const db = {
     db.domains.reset()
     db.apiKeys.reset()
     db.integrations.reset()
+    db.templates.reset()
     db.websites.reset()
     db.websiteContents.reset()
   },

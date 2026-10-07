@@ -13,6 +13,8 @@ import { PHOTOS, unsplash } from "@/lib/mock-data"
 
 type WebsiteParams = { websiteId: string }
 
+const SUBDOMAIN_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
 const notFound = () => errorResponse(404, "Website not found.")
 
 const STRING_FIELDS = [
@@ -102,23 +104,45 @@ export const websiteHandlers = [
       const body = await readJson(request)
       if (!isRecord(body))
         return errorResponse(422, "Request body must be a JSON object.")
-      if (typeof body.templateId !== "string")
-        return errorResponse(422, "templateId is required.")
+      const template =
+        typeof body.templateId === "string"
+          ? db.templates.find(body.templateId)
+          : undefined
+      if (!template) return errorResponse(422, "Choose a template that exists.")
       const info = parseInfo(body.info)
       if (typeof info === "string") return errorResponse(422, info)
+      const name =
+        typeof body.name === "string" && body.name.trim()
+          ? body.name.trim()
+          : info.projectName
+      let domain = uniqueDomain(name)
+      if (body.subdomain !== undefined) {
+        if (
+          typeof body.subdomain !== "string" ||
+          !SUBDOMAIN_RE.test(body.subdomain)
+        )
+          return errorResponse(
+            422,
+            "Use lowercase letters, numbers and single hyphens for the address."
+          )
+        domain = `${body.subdomain}.myprop.live`
+        if (db.websites.all().some((w) => w.domain === domain))
+          return errorResponse(422, `${domain} is already taken.`)
+      }
 
       const now = new Date().toISOString()
+      db.templates.update(template.id, { uses: template.uses + 1 })
       const website = db.websites.insert({
         id: crypto.randomUUID(),
-        name: info.projectName,
-        domain: uniqueDomain(info.projectName),
+        name,
+        domain,
         status: "draft",
         thumbnailUrl: unsplash(PHOTOS.building, 600, 375),
         views: 0,
         leads: 0,
         conversionRate: 0,
         toolIds: info.enabledToolIds,
-        templateId: body.templateId,
+        templateId: template.id,
         createdAt: now,
         updatedAt: now,
         publishedAt: null,

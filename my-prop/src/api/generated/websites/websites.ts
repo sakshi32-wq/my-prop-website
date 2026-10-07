@@ -40,6 +40,8 @@ import type {
   WebsiteInput,
 } from "../model"
 
+import { getListTemplatesQueryKey } from "../templates/templates"
+
 import { customFetch } from "../../fetcher.ts"
 import type { ErrorType } from "../../fetcher.ts"
 
@@ -314,7 +316,12 @@ export const getCreateWebsiteMutationOptions = <
     context: MutationFunctionContext
   ) => {
     if (!options?.skipInvalidation) {
-      queryClient.invalidateQueries({ queryKey: getListWebsitesQueryKey() })
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          [getListWebsitesQueryKey(), getListTemplatesQueryKey()].some(
+            (queryKey) => matchQuery({ queryKey }, query)
+          ),
+      })
     }
     mutationOptions?.onSuccess?.(data, variables, onMutateResult, context)
   }

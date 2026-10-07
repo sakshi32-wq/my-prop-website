@@ -1,6 +1,7 @@
 import { subDays } from "date-fns"
 
 import type { Website, WebsiteInfo } from "@/api/generated/model"
+import { DEMO_TEMPLATES } from "@/components/templates/template-data"
 import { PHOTOS, WEBSITE_TOOLS, unsplash } from "@/lib/mock-data"
 
 export type {
@@ -58,7 +59,7 @@ function demoWebsite(
   return {
     ...rest,
     thumbnailUrl: unsplash(photo, 600, 375),
-    templateId: "1",
+    templateId: DEMO_TEMPLATES[0].id,
     createdAt,
     updatedAt: createdAt,
     publishedAt: rest.status === "live" ? createdAt : null,

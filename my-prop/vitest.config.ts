@@ -9,5 +9,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    // Wizard tests walk many steps with real user events.
+    testTimeout: 15_000,
   },
 })

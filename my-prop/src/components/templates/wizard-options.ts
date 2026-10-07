@@ -7,7 +7,8 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-import type { LibraryTemplate } from "@/components/templates/template-data"
+import { templateThumbnailUrl } from "@/components/templates/template-data"
+import type { GeneratedTemplate } from "@/components/templates/template-data"
 import { PHOTOS } from "@/lib/mock-data"
 
 export type Option = { value: string; label: string; description?: string }
@@ -213,18 +214,16 @@ const PHOTO_BY_PROPERTY: Record<string, string> = {
   penthouses: PHOTOS.interior2,
 }
 
-export function buildGeneratedTemplate(data: WizardData): LibraryTemplate {
+/** The simulated AI result; it becomes a real template once saved. */
+export function buildGeneratedTemplate(data: WizardData): GeneratedTemplate {
   const style = optionLabel(DESIGN_STYLES, data.designStyle)
   const type = optionLabel(TEMPLATE_TYPES, data.templateType)
   return {
-    id: Date.now(),
     name: data.templateName.trim() || `Custom ${style.split(" ")[0]} Template`,
     category: CATEGORY_BY_PROPERTY[data.propertyType] ?? "New Development",
-    thumbnail: PHOTO_BY_PROPERTY[data.propertyType] ?? PHOTOS.building,
-    rating: 5,
-    uses: 0,
-    isPremium: false,
-    isCustom: true,
+    thumbnailUrl: templateThumbnailUrl(
+      PHOTO_BY_PROPERTY[data.propertyType] ?? PHOTOS.building
+    ),
     description:
       data.templateDescription.trim() ||
       `AI-generated ${type.toLowerCase()} for ${optionLabel(

@@ -11,7 +11,10 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import type { LibraryTemplate } from "@/components/templates/template-data"
+import type {
+  GeneratedTemplate,
+  LibraryTemplate,
+} from "@/components/templates/template-data"
 import { GeneratedPreview } from "@/components/templates/generated-preview"
 import {
   ContentStep,
@@ -30,6 +33,7 @@ import type {
   WizardData,
   WizardErrors,
 } from "@/components/templates/wizard-options"
+import { useCreateTemplate } from "@/api/generated/templates/templates"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -49,21 +53,16 @@ export function GenerateTemplateWizard({
   open,
   onOpenChange,
   onUseTemplate,
-  onSaveTemplate,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUseTemplate: (template: LibraryTemplate) => void
-  onSaveTemplate: (template: LibraryTemplate) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-3xl">
         {/* Mounted only while open, so the wizard resets on close. */}
-        <WizardBody
-          onUseTemplate={onUseTemplate}
-          onSaveTemplate={onSaveTemplate}
-        />
+        <WizardBody onUseTemplate={onUseTemplate} />
       </DialogContent>
     </Dialog>
   )
@@ -71,17 +70,26 @@ export function GenerateTemplateWizard({
 
 function WizardBody({
   onUseTemplate,
-  onSaveTemplate,
 }: {
   onUseTemplate: (template: LibraryTemplate) => void
-  onSaveTemplate: (template: LibraryTemplate) => void
 }) {
   const [step, setStep] = useState(0)
   const [data, setData] = useState<WizardData>(EMPTY_WIZARD_DATA)
   const [showErrors, setShowErrors] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [generated, setGenerated] = useState<LibraryTemplate | null>(null)
-  const [saved, setSaved] = useState(false)
+  const [generated, setGenerated] = useState<GeneratedTemplate | null>(null)
+  // The library copy, once the generated template has been saved.
+  const [saved, setSaved] = useState<LibraryTemplate | null>(null)
+  const createTemplate = useCreateTemplate({
+    mutation: {
+      onSuccess: (template) => {
+        setSaved(template)
+        toast.success("Saved to library", {
+          description: `${template.name} is now in your template library.`,
+        })
+      },
+    },
+  })
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const scrollArea = useRef<HTMLDivElement>(null)
 
@@ -112,17 +120,22 @@ function WizardBody({
     timer.current = setTimeout(() => {
       setGenerating(false)
       setGenerated(buildGeneratedTemplate(data))
-      setSaved(false)
+      setSaved(null)
     }, 3000)
   }
 
   function handleSave() {
-    if (!generated) return
-    onSaveTemplate(generated)
-    setSaved(true)
-    toast.success("Saved to library", {
-      description: `${generated.name} is now in your template library.`,
-    })
+    if (generated) createTemplate.mutate({ data: generated })
+  }
+
+  // Websites can only use library templates, so save the result first.
+  function handleUse() {
+    if (saved) onUseTemplate(saved)
+    else if (generated)
+      createTemplate.mutate(
+        { data: generated },
+        { onSuccess: (template) => onUseTemplate(template) }
+      )
   }
 
   const current = WIZARD_STEPS[step]
@@ -184,12 +197,18 @@ function WizardBody({
                   <EyeIcon data-icon="inline-start" />
                   Full Preview
                 </Button>
-                <Button onClick={() => onUseTemplate(generated)}>
+                <Button disabled={createTemplate.isPending} onClick={handleUse}>
                   <CheckIcon data-icon="inline-start" />
                   Use Template
                 </Button>
-                <Button variant="outline" disabled={saved} onClick={handleSave}>
-                  {saved ? (
+                <Button
+                  variant="outline"
+                  disabled={!!saved || createTemplate.isPending}
+                  onClick={handleSave}
+                >
+                  {createTemplate.isPending ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : saved ? (
                     <CheckIcon data-icon="inline-start" />
                   ) : (
                     <BookmarkPlusIcon data-icon="inline-start" />
@@ -235,7 +254,7 @@ function WizardBody({
               variant="outline"
               onClick={() => {
                 setGenerated(null)
-                setSaved(false)
+                setSaved(null)
                 goTo(0)
               }}
             >

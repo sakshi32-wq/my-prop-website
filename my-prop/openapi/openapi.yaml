@@ -24,6 +24,8 @@ tags:
     description: Third-party services the workspace connects to
   - name: websites
     description: Property websites and their builder content
+  - name: templates
+    description: The website template library, including saved AI templates
 
 paths:
   /leads:
@@ -757,6 +759,86 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
+  /templates:
+    get:
+      operationId: listTemplates
+      tags: [templates]
+      summary: List templates, newest first (saved custom templates come first)
+      parameters:
+        - name: q
+          in: query
+          description: Matches name, description, category and tags.
+          schema:
+            type: string
+        - name: price
+          in: query
+          schema:
+            $ref: "#/components/schemas/TemplatePrice"
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          description: Templates that have all of these tags.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        "200":
+          description: Matching templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Template"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createTemplate
+      tags: [templates]
+      summary: Save a custom (AI-generated) template to the library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateInput"
+      responses:
+        "201":
+          description: The saved template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /templates/{templateId}:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    get:
+      operationId: getTemplate
+      tags: [templates]
+      summary: Get a template
+      responses:
+        "200":
+          description: The template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -764,6 +846,13 @@ components:
       scheme: bearer
 
   parameters:
+    TemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     WebsiteId:
       name: websiteId
       in: path
@@ -1400,6 +1489,14 @@ components:
       properties:
         templateId:
           type: string
+          format: uuid
+        name:
+          type: string
+          description: Website name. Defaults to info.projectName.
+        subdomain:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          description: The <subdomain>.myprop.live address. Generated from the name when omitted.
         info:
           $ref: "#/components/schemas/WebsiteInfo"
 
@@ -1437,6 +1534,7 @@ components:
             type: string
         templateId:
           type: string
+          format: uuid
         createdAt:
           type: string
           format: date-time
@@ -1474,4 +1572,72 @@ components:
             $ref: "#/components/schemas/WebsiteSection"
         savedAt:
           type: [string, "null"]
+          format: date-time
+
+    TemplatePrice:
+      type: string
+      enum: [premium, free]
+
+    TemplateInput:
+      type: object
+      required: [name, category, description, tags, thumbnailUrl]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        category:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        thumbnailUrl:
+          type: string
+          format: uri
+
+    Template:
+      type: object
+      required:
+        [id, name, category, description, tags, thumbnailUrl, galleryUrls, rating, uses, isPremium, isCustom, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        thumbnailUrl:
+          type: string
+          format: uri
+        galleryUrls:
+          type: array
+          description: Images for the template preview's gallery.
+          items:
+            type: string
+            format: uri
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        uses:
+          type: integer
+          minimum: 0
+          description: Websites created from this template.
+        isPremium:
+          type: boolean
+        isCustom:
+          type: boolean
+          description: Saved from the AI generator rather than part of the library.
+        createdAt:
+          type: string
           format: date-time

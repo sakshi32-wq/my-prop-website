@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { LayoutTemplateIcon } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -5,24 +6,36 @@ import {
   Field,
   FieldContent,
   FieldDescription,
+  FieldError,
   FieldLabel,
   FieldTitle,
 } from "@/components/ui/field"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { PROPERTY_TYPES, TEMPLATES, unsplash } from "@/lib/mock-data"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useListTemplates } from "@/api/generated/templates/templates"
+import { QueryError } from "@/components/query-error"
+import { PROPERTY_TYPES } from "@/lib/mock-data"
 
 import { StepIntro } from "./step-intro"
 import type { StepProps } from "./types"
 
-const WIZARD_TEMPLATES = TEMPLATES.slice(0, 3)
+/** The wizard offers the first few library templates. */
+const WIZARD_TEMPLATE_COUNT = 3
 
-export function StepTemplate({ data, update }: StepProps) {
+export function StepTemplate({ data, update, errors }: StepProps) {
+  const templatesQuery = useListTemplates()
+  const templates = templatesQuery.data?.slice(0, WIZARD_TEMPLATE_COUNT) ?? []
+
+  // Preselect the first template once the list arrives.
+  const firstId = templates.at(0)?.id
+  useEffect(() => {
+    if (!data.templateId && firstId) update({ templateId: firstId })
+  }, [data.templateId, firstId, update])
+
   const propertyType = PROPERTY_TYPES.find(
     (type) => type.value === data.propertyType
   )?.label
-  const template = WIZARD_TEMPLATES.find(
-    (t) => String(t.id) === data.templateId
-  )?.name
+  const template = templates.find((t) => t.id === data.templateId)?.name
 
   const summary = [
     { label: "Project", value: data.projectName || "Not set" },
@@ -51,11 +64,22 @@ export function StepTemplate({ data, update }: StepProps) {
         onValueChange={(value) => update({ templateId: value })}
         className="gap-3"
       >
-        {WIZARD_TEMPLATES.map((item) => (
+        {templatesQuery.isPending &&
+          Array.from({ length: WIZARD_TEMPLATE_COUNT }, (_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        {templatesQuery.isError && (
+          <QueryError
+            title="Couldn't load templates"
+            error={templatesQuery.error}
+            onRetry={() => void templatesQuery.refetch()}
+          />
+        )}
+        {templates.map((item) => (
           <FieldLabel key={item.id} htmlFor={`wizard-template-${item.id}`}>
             <Field orientation="horizontal">
               <img
-                src={unsplash(item.thumbnail, 160, 160)}
+                src={item.thumbnailUrl}
                 alt=""
                 loading="lazy"
                 className="size-16 shrink-0 rounded-md object-cover"
@@ -65,13 +89,14 @@ export function StepTemplate({ data, update }: StepProps) {
                 <FieldDescription>{item.description}</FieldDescription>
               </FieldContent>
               <RadioGroupItem
-                value={String(item.id)}
+                value={item.id}
                 id={`wizard-template-${item.id}`}
               />
             </Field>
           </FieldLabel>
         ))}
       </RadioGroup>
+      <FieldError>{errors.templateId}</FieldError>
 
       <Card size="sm">
         <CardHeader>

@@ -58,7 +58,7 @@ export function createInitialData(): WizardData {
     generateWithAI: true,
     aiTone: "luxury",
     targetAudience: "",
-    templateId: "1",
+    templateId: "",
     keyHighlights: "",
     developerInfo: "",
     nearbyLocations: "",
@@ -81,6 +81,7 @@ export function validateStep(step: number, data: WizardData): WizardErrors {
       errors.configurations = "Select at least one configuration."
     }
   }
+  if (step === 5 && !data.templateId) errors.templateId = "Choose a template."
   return errors
 }
 

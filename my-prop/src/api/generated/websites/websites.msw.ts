@@ -31,7 +31,7 @@ export const getListWebsitesResponseMock = (): Website[] =>
       { length: faker.number.int({ min: 1, max: 10 }) },
       (_, i) => i + 1
     ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
-    templateId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    templateId: faker.string.uuid(),
     createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     publishedAt: faker.helpers.arrayElement([
@@ -55,7 +55,7 @@ export const getCreateWebsiteResponseMock = (
     { length: faker.number.int({ min: 1, max: 10 }) },
     (_, i) => i + 1
   ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
-  templateId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  templateId: faker.string.uuid(),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   publishedAt: faker.helpers.arrayElement([
@@ -80,7 +80,7 @@ export const getGetWebsiteResponseMock = (
     { length: faker.number.int({ min: 1, max: 10 }) },
     (_, i) => i + 1
   ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
-  templateId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  templateId: faker.string.uuid(),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   publishedAt: faker.helpers.arrayElement([
@@ -215,7 +215,7 @@ export const getPublishWebsiteResponseMock = (
     { length: faker.number.int({ min: 1, max: 10 }) },
     (_, i) => i + 1
   ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
-  templateId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  templateId: faker.string.uuid(),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   publishedAt: faker.helpers.arrayElement([

@@ -1,11 +1,20 @@
 import { useState } from "react"
+import { keepPreviousData } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { SearchIcon, SparklesIcon } from "lucide-react"
 
+import {
+  useGetTemplate,
+  useListTemplates,
+} from "@/api/generated/templates/templates"
 import { PageHeader } from "@/components/page-header"
+import { QueryError } from "@/components/query-error"
 import { GenerateTemplateWizard } from "@/components/templates/generate-template-wizard"
 import { TemplateCard } from "@/components/templates/template-card"
-import { ALL_CATEGORIES } from "@/components/templates/template-data"
+import {
+  ALL_CATEGORIES,
+  toListTemplatesParams,
+} from "@/components/templates/template-data"
 import type { LibraryTemplate } from "@/components/templates/template-data"
 import {
   ActiveFilters,
@@ -30,14 +39,17 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { TEMPLATES, TEMPLATE_CATEGORIES } from "@/lib/mock-data"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { TEMPLATE_CATEGORIES } from "@/lib/mock-data"
+import { cn } from "@/lib/utils"
 
 type TemplatesSearch = {
   q?: string
   price?: "premium" | "free"
   category?: string
   tags?: Array<string>
-  preview?: number
+  preview?: string
 }
 
 const CATEGORY_VALUES: ReadonlyArray<string> = TEMPLATE_CATEGORIES
@@ -47,7 +59,6 @@ export const Route = createFileRoute("/app/templates")({
     const tags = Array.isArray(search.tags)
       ? search.tags.filter((tag): tag is string => typeof tag === "string")
       : []
-    const preview = Number(search.preview)
     return {
       q: typeof search.q === "string" && search.q ? search.q : undefined,
       price:
@@ -61,39 +72,21 @@ export const Route = createFileRoute("/app/templates")({
           ? search.category
           : undefined,
       tags: tags.length > 0 ? tags : undefined,
-      preview: Number.isInteger(preview) && preview > 0 ? preview : undefined,
+      preview:
+        typeof search.preview === "string" && search.preview
+          ? search.preview
+          : undefined,
     }
   },
   component: TemplatesPage,
 })
 
-function matches(template: LibraryTemplate, filters: TemplateFilterState) {
-  const q = filters.query.trim().toLowerCase()
-  const matchesSearch =
-    !q ||
-    [template.name, template.description, template.category, ...template.tags]
-      .join(" ")
-      .toLowerCase()
-      .includes(q)
-  const matchesPrice =
-    filters.price === "all" ||
-    (filters.price === "premium" ? template.isPremium : !template.isPremium)
-  const matchesCategory =
-    filters.category === ALL_CATEGORIES ||
-    template.category === filters.category
-  const matchesTags = filters.tags.every((tag) => template.tags.includes(tag))
-  return matchesSearch && matchesPrice && matchesCategory && matchesTags
-}
-
 function TemplatesPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  const [templates, setTemplates] = useState<Array<LibraryTemplate>>(TEMPLATES)
   // The search box is local for instant typing; it is mirrored into the URL.
   const [query, setQuery] = useState(search.q ?? "")
-  const [lastPreview, setLastPreview] = useState<LibraryTemplate | null>(
-    () => TEMPLATES.find((t) => t.id === search.preview) ?? null
-  )
+  const [lastPreview, setLastPreview] = useState<LibraryTemplate | null>(null)
   const [useTarget, setUseTarget] = useState<LibraryTemplate | null>(null)
   const [useOpen, setUseOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -104,15 +97,26 @@ function TemplatesPage() {
     category: search.category ?? ALL_CATEGORIES,
     tags: search.tags ?? [],
   }
-  const filtered = templates.filter((template) => matches(template, filters))
+  // Filtering happens on the server; typing is debounced.
+  const templatesQuery = useListTemplates(
+    toListTemplatesParams({ ...filters, query: useDebouncedValue(query) }),
+    { query: { placeholderData: keepPreviousData } }
+  )
+  const filtered = templatesQuery.data ?? []
   const activeFilterCount =
     (filters.query ? 1 : 0) +
     (filters.price !== "all" ? 1 : 0) +
     (filters.category !== ALL_CATEGORIES ? 1 : 0) +
     filters.tags.length
 
+  // A shared ?preview= link may point outside the current filters.
+  const previewQuery = useGetTemplate(search.preview ?? "", {
+    query: { enabled: !!search.preview },
+  })
   const previewTemplate = search.preview
-    ? (templates.find((t) => t.id === search.preview) ?? null)
+    ? (filtered.find((t) => t.id === search.preview) ??
+      previewQuery.data ??
+      null)
     : null
 
   function setSearch(patch: Partial<TemplatesSearch>) {
@@ -157,12 +161,6 @@ function TemplatesPage() {
     setUseOpen(true)
   }
 
-  function saveTemplate(template: LibraryTemplate) {
-    setTemplates((prev) =>
-      prev.some((t) => t.id === template.id) ? prev : [template, ...prev]
-    )
-  }
-
   return (
     <>
       <PageHeader
@@ -201,8 +199,30 @@ function TemplatesPage() {
         />
       )}
 
-      {filtered.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      {templatesQuery.isPending ? (
+        <div
+          className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3"
+          aria-busy="true"
+          aria-label="Loading templates"
+        >
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-96 rounded-xl" />
+          ))}
+        </div>
+      ) : templatesQuery.isError ? (
+        <QueryError
+          title="Couldn't load templates"
+          error={templatesQuery.error}
+          onRetry={() => void templatesQuery.refetch()}
+        />
+      ) : filtered.length > 0 ? (
+        <div
+          className={cn(
+            "grid gap-6 transition-opacity sm:grid-cols-2 xl:grid-cols-3",
+            templatesQuery.isPlaceholderData && "opacity-60"
+          )}
+          aria-busy={templatesQuery.isPlaceholderData}
+        >
           {filtered.map((template) => (
             <TemplateCard
               key={template.id}
@@ -256,7 +276,6 @@ function TemplatesPage() {
         open={wizardOpen}
         onOpenChange={setWizardOpen}
         onUseTemplate={openUseTemplate}
-        onSaveTemplate={saveTemplate}
       />
       <TemplatePreviewDialog
         open={previewTemplate !== null}

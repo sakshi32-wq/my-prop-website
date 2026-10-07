@@ -19,57 +19,52 @@ describe("WebsitesPage", () => {
     expect(screen.getAllByText("Draft")).toHaveLength(1)
   })
 
-  // Walks all 7 wizard steps with real user events, so it needs more time.
-  it(
-    "creates a website and opens it in the builder",
-    { timeout: 15_000 },
-    async () => {
-      const request = gate()
-      server.use(http.post(apiPath("/websites"), request.resolver))
-      const { user, router } = renderWithRouter(<WebsitesPage />)
-      await screen.findByText("Skyline Heights")
+  it("creates a website and opens it in the builder", async () => {
+    const request = gate()
+    server.use(http.post(apiPath("/websites"), request.resolver))
+    const { user, router } = renderWithRouter(<WebsitesPage />)
+    await screen.findByText("Skyline Heights")
 
-      await user.click(
-        screen.getAllByRole("button", { name: "Create New Website" })[0]
-      )
-      const dialog = await screen.findByRole("dialog")
-      const next = () =>
-        user.click(within(dialog).getByRole("button", { name: /Next/ }))
-      await user.type(within(dialog).getByLabelText(/Project Name/), "Lakeside")
-      await user.type(within(dialog).getByLabelText(/Location/), "Pune")
-      await next()
-      await user.click(within(dialog).getByLabelText(/Property Type/))
-      await user.click(
-        await screen.findByRole("option", { name: "Apartment Complex" })
-      )
-      await user.click(within(dialog).getByRole("button", { name: /2 BHK/ }))
-      for (let step = 2; step < 7; step++) await next()
+    await user.click(
+      screen.getAllByRole("button", { name: "Create New Website" })[0]
+    )
+    const dialog = await screen.findByRole("dialog")
+    const next = () =>
+      user.click(within(dialog).getByRole("button", { name: /Next/ }))
+    await user.type(within(dialog).getByLabelText(/Project Name/), "Lakeside")
+    await user.type(within(dialog).getByLabelText(/Location/), "Pune")
+    await next()
+    await user.click(within(dialog).getByLabelText(/Property Type/))
+    await user.click(
+      await screen.findByRole("option", { name: "Apartment Complex" })
+    )
+    await user.click(within(dialog).getByRole("button", { name: /2 BHK/ }))
+    for (let step = 2; step < 7; step++) await next()
 
-      await user.click(
-        within(dialog).getByRole("button", { name: /Create Website/ })
-      )
-      expect(
-        within(dialog).getByRole("button", { name: /Create Website/ })
-      ).toBeDisabled()
+    await user.click(
+      within(dialog).getByRole("button", { name: /Create Website/ })
+    )
+    expect(
+      within(dialog).getByRole("button", { name: /Create Website/ })
+    ).toBeDisabled()
 
-      request.release()
-      expect(await screen.findByText('"Lakeside" created')).toBeVisible()
-      const created = db.websites.all().find((w) => w.name === "Lakeside")
-      expect(created).toMatchObject({
-        status: "draft",
-        domain: "lakeside.myprop.live",
-      })
-      expect(db.websiteContents.find(created!.id)?.info).toMatchObject({
-        location: "Pune",
-        configurations: ["2 BHK"],
-      })
-      await waitFor(() =>
-        expect(router.state.location.pathname).toBe(
-          `/app/websites/${created!.id}/builder`
-        )
+    request.release()
+    expect(await screen.findByText('"Lakeside" created')).toBeVisible()
+    const created = db.websites.all().find((w) => w.name === "Lakeside")
+    expect(created).toMatchObject({
+      status: "draft",
+      domain: "lakeside.myprop.live",
+    })
+    expect(db.websiteContents.find(created!.id)?.info).toMatchObject({
+      location: "Pune",
+      configurations: ["2 BHK"],
+    })
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(
+        `/app/websites/${created!.id}/builder`
       )
-    }
-  )
+    )
+  })
 
   it("shows an error with Retry when the list fails", async () => {
     server.use(

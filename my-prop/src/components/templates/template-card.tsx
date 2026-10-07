@@ -12,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { unsplash } from "@/lib/mock-data"
 
 const MAX_TAGS = 3
 
@@ -35,7 +34,7 @@ export function TemplateCard({
     <Card className="group pt-0">
       <AspectRatio ratio={4 / 3} className="overflow-hidden bg-muted">
         <img
-          src={unsplash(template.thumbnail, 600, 450)}
+          src={template.thumbnailUrl}
           alt={template.name}
           loading="lazy"
           className="size-full object-cover transition-transform duration-300 group-hover:scale-105"

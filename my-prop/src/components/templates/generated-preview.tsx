@@ -1,6 +1,6 @@
 import { GlobeIcon } from "lucide-react"
 
-import type { LibraryTemplate } from "@/components/templates/template-data"
+import type { GeneratedTemplate } from "@/components/templates/template-data"
 import { Swatches } from "@/components/templates/wizard-steps"
 import {
   DESIGN_STYLES,
@@ -16,7 +16,7 @@ export function GeneratedPreview({
   template,
   data,
 }: {
-  template: LibraryTemplate
+  template: GeneratedTemplate
   data: WizardData
 }) {
   return (

@@ -27,7 +27,7 @@ reference implementation for everything below.
 | 4 | api-keys | `settings/api-keys-card.tsx` (`INITIAL_KEYS`) | ✅ done |
 | 5 | integrations | `settings/integrations-tab.tsx` (`INITIAL_CONNECTED`) | ✅ done |
 | 6 | websites | `routes/app.websites.tsx`, `dashboard/active-websites-card.tsx`, `builder/storage.ts` (localStorage) | ✅ done |
-| 7 | templates | `routes/app.templates.tsx` (`TEMPLATES`) | ⬜ |
+| 7 | templates | `routes/app.templates.tsx` (`TEMPLATES`) | ✅ done |
 | 8 | profile | `settings/profile-info-card.tsx`, `notifications-card.tsx` | ⬜ |
 | 9 | analytics | `analytics/*`, `dashboard/kpi-cards.tsx` and charts (read-only) | ⬜ |
 
@@ -125,3 +125,21 @@ Follow the Leads files as the template for each step.
   Uploaded files are sent as metadata only, because there is no upload endpoint yet.
   The Lighthouse report is still simulated. Component tests that need `Link` or
   `useNavigate` use `renderWithRouter` from `src/test/render.tsx`.
+- **templates:** the library's URL filters (`q`, `price`, `category`, `tags`) map to
+  `listTemplates` params, so filtering runs on the server; the search box is
+  debounced. A `?preview=<id>` link loads with `getTemplate`, even when the template
+  is outside the current filters. Template ids are UUIDs and images are URLs
+  (`thumbnailUrl`, `galleryUrls`). The AI generator is still simulated, but "Save to
+  Library" is `POST /templates`, and "Use Template" on an unsaved result saves it
+  first, so websites only reference real templates. "Use template" creates a real
+  website (`createWebsite` with `name` and `subdomain`; a taken address returns 422)
+  and opens the builder at its id, and creating a website increments the template's
+  `uses`. The website wizard's template step loads from the API and preselects the
+  first template. **Cross-tag invalidation:** to invalidate another tag's query, pass
+  `file` as that tag's folder relative to the output root (see `createWebsite` in
+  `orval.config.ts`). There is no component test for the templates page itself,
+  because it is bound to its file route's search params; the browser check covers
+  it. The suite's `testTimeout` is 15 s because the wizard tests are long.
+- **Dev noise (not an app bug):** when a browser session is killed mid-request, the
+  TanStack devtools console pipe can echo the resulting error between client and
+  server in a growing nested burst ("[Server] … [Server] …"). It stops by itself.

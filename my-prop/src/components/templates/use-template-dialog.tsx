@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   ArrowRightIcon,
@@ -17,6 +17,8 @@ import {
   slugify,
 } from "@/components/templates/template-data"
 import type { LibraryTemplate } from "@/components/templates/template-data"
+import { useCreateWebsite } from "@/api/generated/websites/websites"
+import { emptyWebsiteInfo } from "@/components/websites/data"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -52,7 +54,6 @@ import {
 } from "@/components/ui/item"
 import { Progress } from "@/components/ui/progress"
 import { Spinner } from "@/components/ui/spinner"
-import { unsplash } from "@/lib/mock-data"
 
 const NEXT_STEPS = [
   {
@@ -113,13 +114,24 @@ function UseTemplateForm({
   const navigate = useNavigate()
   const [step, setStep] = useState<1 | 2>(1)
   const [submitted, setSubmitted] = useState(false)
-  const [creating, setCreating] = useState(false)
   const [websiteName, setWebsiteName] = useState("")
   const [projectName, setProjectName] = useState("")
   const [domain, setDomain] = useState("")
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-
-  useEffect(() => () => clearTimeout(timer.current), [])
+  const createWebsite = useCreateWebsite({
+    mutation: {
+      onSuccess: (website) => {
+        toast.success(`${website.name} created`, {
+          description: `Built from the ${template.name} template at ${website.domain}`,
+        })
+        onClose()
+        void navigate({
+          to: "/app/websites/$id/builder",
+          params: { id: website.id },
+        })
+      },
+    },
+  })
+  const creating = createWebsite.isPending
 
   const websiteNameError =
     submitted && !websiteName.trim() ? "Website name is required." : undefined
@@ -139,17 +151,14 @@ function UseTemplateForm({
       return
     }
     if (domainError) return
-    setCreating(true)
-    timer.current = setTimeout(() => {
-      toast.success(`${websiteName.trim()} created`, {
-        description: `Built from the ${template.name} template at ${slug}.myprop.live`,
-      })
-      onClose()
-      void navigate({
-        to: "/app/websites/$id/builder",
-        params: { id: "new" },
-      })
-    }, 1500)
+    createWebsite.mutate({
+      data: {
+        templateId: template.id,
+        name: websiteName.trim(),
+        subdomain: slug,
+        info: emptyWebsiteInfo(projectName.trim()),
+      },
+    })
   }
 
   return (
@@ -172,7 +181,7 @@ function UseTemplateForm({
         <div className="-mx-4 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-1">
           <Item variant="outline">
             <ItemMedia variant="image" className="size-16">
-              <img src={unsplash(template.thumbnail, 200, 200)} alt="" />
+              <img src={template.thumbnailUrl} alt="" />
             </ItemMedia>
             <ItemContent>
               <ItemTitle className="flex-wrap">

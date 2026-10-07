@@ -80,8 +80,17 @@ export default defineConfig({
               invalidates: ["listIntegrations"],
             },
             {
+              // Creating a website also bumps its template's use count.
               onMutations: ["createWebsite"],
-              invalidates: ["listWebsites"],
+              invalidates: [
+                "listWebsites",
+                // Another tag's query: `file` is its folder, relative to the output root.
+                { query: "listTemplates", file: "./templates" },
+              ],
+            },
+            {
+              onMutations: ["createTemplate"],
+              invalidates: ["listTemplates"],
             },
             {
               onMutations: ["saveWebsiteContent"],

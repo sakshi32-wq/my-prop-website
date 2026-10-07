@@ -11,5 +11,12 @@ import type { WebsiteInfo } from "./websiteInfo.ts"
 
 export interface WebsiteInput {
   templateId: string
+  /** Website name. Defaults to info.projectName. */
+  name?: string
+  /**
+   * The <subdomain>.myprop.live address. Generated from the name when omitted.
+   * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+   */
+  subdomain?: string
   info: WebsiteInfo
 }

@@ -4,7 +4,6 @@ import { toast } from "sonner"
 import {
   ABOUT_HIGHLIGHTS,
   PREVIEW_AMENITIES,
-  galleryPhotos,
   slugify,
 } from "@/components/templates/template-data"
 import type {
@@ -16,7 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { unsplash } from "@/lib/mock-data"
 
 function previewOnly() {
   toast("Preview only", {
@@ -54,7 +52,7 @@ export function TemplatePreviewSite({
           className="relative flex min-h-80 scroll-mt-4 items-center justify-center overflow-hidden"
         >
           <img
-            src={unsplash(template.thumbnail, 1200, 600)}
+            src={template.thumbnailUrl}
             alt=""
             className="absolute inset-0 size-full object-cover"
           />
@@ -145,13 +143,13 @@ export function TemplatePreviewSite({
               Gallery
             </h3>
             <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
-              {galleryPhotos(template.thumbnail).map((photo, i) => (
+              {template.galleryUrls.map((photo, i) => (
                 <div
                   key={`${photo}-${i}`}
                   className="aspect-video overflow-hidden rounded-lg bg-muted"
                 >
                   <img
-                    src={unsplash(photo, 400, 300)}
+                    src={photo}
                     alt={`${template.name} gallery ${i + 1}`}
                     loading="lazy"
                     className="size-full object-cover transition-transform hover:scale-105"

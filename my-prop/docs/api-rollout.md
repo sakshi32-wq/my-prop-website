@@ -24,7 +24,7 @@ reference implementation for everything below.
 | 1 | campaigns | `campaigns/campaigns-page.tsx` (`createMockCampaigns`) | ✅ done |
 | 2 | team | `settings/team-tab.tsx` (`INITIAL_MEMBERS`) | ✅ done |
 | 3 | domains | `settings/domains-tab.tsx` (`INITIAL_DOMAINS`) | ✅ done |
-| 4 | api-keys | `settings/api-keys-card.tsx` (`INITIAL_KEYS`) | ⬜ |
+| 4 | api-keys | `settings/api-keys-card.tsx` (`INITIAL_KEYS`) | ✅ done |
 | 5 | integrations | `settings/integrations-tab.tsx` (`INITIAL_CONNECTED`) | ⬜ |
 | 6 | websites | `routes/app.websites.tsx`, `dashboard/active-websites-card.tsx`, `builder/storage.ts` (localStorage) | ⬜ |
 | 7 | templates | `routes/app.templates.tsx` (`TEMPLATES`) | ⬜ |
@@ -103,3 +103,7 @@ Follow the Leads files as the template for each step.
   the current `WEBSITES` ids (`"1"`–`"4"`). When websites move to the API, make it
   `format: uuid`, re-seed `DEMO_DOMAINS` with the new website ids, and have the mock
   look websites up in `db.websites` instead of `WEBSITES`.
+- **api-keys (behaviour change, needs sign-off):** like a real API, the secret is only
+  returned by `POST /api-keys`. The list returns a masked `preview`, so the
+  Reveal/Hide and list-level Copy buttons were removed. The create dialog still shows
+  and copies the new secret once. The mock stores only the preview.

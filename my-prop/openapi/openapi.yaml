@@ -18,6 +18,8 @@ tags:
     description: Workspace members, invitations and roles
   - name: domains
     description: Custom domains that point to websites
+  - name: api-keys
+    description: Keys for calling the myprop.live API from other systems
 
 paths:
   /leads:
@@ -466,6 +468,59 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api-keys:
+    get:
+      operationId: listApiKeys
+      tags: [api-keys]
+      summary: List API keys, oldest first (secrets are never returned here)
+      responses:
+        "200":
+          description: Keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createApiKey
+      tags: [api-keys]
+      summary: Generate a key. The response is the only time the secret is returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiKeyInput"
+      responses:
+        "201":
+          description: The new key, including its secret
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyWithSecret"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api-keys/{apiKeyId}:
+    parameters:
+      - $ref: "#/components/parameters/ApiKeyId"
+    delete:
+      operationId: revokeApiKey
+      tags: [api-keys]
+      summary: Revoke a key. Requests using it are rejected from then on.
+      responses:
+        "204":
+          description: Revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -473,6 +528,13 @@ components:
       scheme: bearer
 
   parameters:
+    ApiKeyId:
+      name: apiKeyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     DomainId:
       name: domainId
       in: path
@@ -912,3 +974,46 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    ApiKeyType:
+      type: string
+      enum: [production, development]
+
+    ApiKeyInput:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        type:
+          $ref: "#/components/schemas/ApiKeyType"
+
+    ApiKey:
+      type: object
+      required: [id, name, type, preview, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/ApiKeyType"
+        preview:
+          type: string
+          description: Masked key for display, e.g. sk_live_••••4f2a.
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiKeyWithSecret:
+      allOf:
+        - $ref: "#/components/schemas/ApiKey"
+        - type: object
+          required: [secret]
+          properties:
+            secret:
+              type: string
+              description: The full key. Only returned when the key is created.

@@ -1,12 +1,18 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { format } from "date-fns"
-import { CopyIcon, KeyIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { KeyIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 
+import { apiKeyTypeLabel } from "./api-keys-data"
+import { optimisticApiKeyRevoke } from "./api-keys-optimistic"
 import { ConfirmAction } from "./confirm-action"
 import { GenerateApiKeyDialog } from "./generate-api-key-dialog"
-import { copyToClipboard, maskSecret } from "./utils"
-import type { NewApiKey } from "./generate-api-key-dialog"
+import {
+  useListApiKeys,
+  useRevokeApiKey,
+} from "@/api/generated/api-keys/api-keys"
+import { QueryError } from "@/components/query-error"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -32,58 +38,23 @@ import {
   ItemGroup,
   ItemTitle,
 } from "@/components/ui/item"
-
-type ApiKey = NewApiKey & { id: string; created: string }
-
-const INITIAL_KEYS: Array<ApiKey> = [
-  {
-    id: "prod",
-    name: "Production API Key",
-    type: "production",
-    key: "sk_live_demo-key-not-real-4f2a",
-    created: "Jan 15, 2026",
-  },
-  {
-    id: "dev",
-    name: "Development API Key",
-    type: "development",
-    key: "sk_test_demo-key-not-real-9b7c",
-    created: "Jan 10, 2026",
-  },
-]
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function ApiKeysCard() {
-  const [keys, setKeys] = useState(INITIAL_KEYS)
-  const [revealed, setRevealed] = useState<Set<string>>(() => new Set())
+  const queryClient = useQueryClient()
+  const keysQuery = useListApiKeys()
+  const keys = keysQuery.data ?? []
   const [generateOpen, setGenerateOpen] = useState(false)
 
-  function toggleReveal(id: string) {
-    setRevealed((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function addKey(key: NewApiKey) {
-    setKeys((prev) => [
-      ...prev,
-      {
-        ...key,
-        id: crypto.randomUUID(),
-        created: format(new Date(), "MMM d, yyyy"),
-      },
-    ])
-    toast.success(`${key.name} created`)
-  }
-
-  function revoke(key: ApiKey) {
-    setKeys((prev) => prev.filter((k) => k.id !== key.id))
-    toast.success(`${key.name} revoked`, {
-      description: "Requests using this key will now be rejected.",
-    })
-  }
+  const revokeKey = useRevokeApiKey({
+    mutation: {
+      ...optimisticApiKeyRevoke(queryClient),
+      onSuccess: (_data, _variables, { removed }) =>
+        toast.success(`${removed?.name ?? "API key"} revoked`, {
+          description: "Requests using this key will now be rejected.",
+        }),
+    },
+  })
 
   return (
     <Card>
@@ -94,7 +65,23 @@ export function ApiKeysCard() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {keys.length === 0 ? (
+        {keysQuery.isPending ? (
+          <ItemGroup
+            className="gap-3"
+            aria-busy="true"
+            aria-label="Loading API keys"
+          >
+            {Array.from({ length: 2 }, (_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+            ))}
+          </ItemGroup>
+        ) : keysQuery.isError ? (
+          <QueryError
+            title="Couldn't load API keys"
+            error={keysQuery.error}
+            onRetry={() => void keysQuery.refetch()}
+          />
+        ) : keys.length === 0 ? (
           <Empty className="border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -108,64 +95,41 @@ export function ApiKeysCard() {
           </Empty>
         ) : (
           <ItemGroup className="gap-3">
-            {keys.map((apiKey) => {
-              const isRevealed = revealed.has(apiKey.id)
-              return (
-                <Item key={apiKey.id} variant="outline">
-                  <ItemContent className="min-w-56">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <ItemTitle>{apiKey.name}</ItemTitle>
-                      <Badge variant="secondary">
-                        {apiKey.type === "production"
-                          ? "Production"
-                          : "Development"}
-                      </Badge>
-                    </div>
-                    <ItemDescription className="font-mono break-all">
-                      {isRevealed ? apiKey.key : maskSecret(apiKey.key)}
-                    </ItemDescription>
-                    <ItemDescription className="text-xs">
-                      Created: {apiKey.created}
-                    </ItemDescription>
-                  </ItemContent>
-                  <ItemActions className="ml-auto">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      aria-pressed={isRevealed}
-                      onClick={() => toggleReveal(apiKey.id)}
-                    >
-                      {isRevealed ? "Hide" : "Reveal"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Copy ${apiKey.name}`}
-                      onClick={() =>
-                        copyToClipboard(apiKey.key, "API key copied")
-                      }
-                    >
-                      <CopyIcon />
-                    </Button>
-                    <ConfirmAction
-                      title={`Revoke ${apiKey.name}?`}
-                      description="Any application using this key will immediately lose access. This cannot be undone."
-                      confirmLabel="Revoke Key"
-                      onConfirm={() => revoke(apiKey)}
-                      trigger={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Revoke ${apiKey.name}`}
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      }
-                    />
-                  </ItemActions>
-                </Item>
-              )
-            })}
+            {keys.map((apiKey) => (
+              <Item key={apiKey.id} variant="outline">
+                <ItemContent className="min-w-56">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ItemTitle>{apiKey.name}</ItemTitle>
+                    <Badge variant="secondary">
+                      {apiKeyTypeLabel(apiKey.type)}
+                    </Badge>
+                  </div>
+                  <ItemDescription className="font-mono break-all">
+                    {apiKey.preview}
+                  </ItemDescription>
+                  <ItemDescription className="text-xs">
+                    Created: {format(apiKey.createdAt, "MMM d, yyyy")}
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions className="ml-auto">
+                  <ConfirmAction
+                    title={`Revoke ${apiKey.name}?`}
+                    description="Any application using this key will immediately lose access. This cannot be undone."
+                    confirmLabel="Revoke Key"
+                    onConfirm={() => revokeKey.mutate({ apiKeyId: apiKey.id })}
+                    trigger={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Revoke ${apiKey.name}`}
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    }
+                  />
+                </ItemActions>
+              </Item>
+            ))}
           </ItemGroup>
         )}
       </CardContent>
@@ -179,7 +143,6 @@ export function ApiKeysCard() {
       <GenerateApiKeyDialog
         open={generateOpen}
         onOpenChange={setGenerateOpen}
-        onGenerate={addKey}
       />
     </Card>
   )

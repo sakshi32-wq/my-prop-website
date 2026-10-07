@@ -67,6 +67,10 @@ export default defineConfig({
                 { query: "getDomain", params: ["domainId"] },
               ],
             },
+            {
+              onMutations: ["createApiKey", "revokeApiKey"],
+              invalidates: ["listApiKeys"],
+            },
           ],
         },
       },

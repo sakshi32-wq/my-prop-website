@@ -1,8 +1,15 @@
 // In-memory tables behind the stateful mock handlers. Rows are copied on the
 // way in and out, so callers can't mutate the store by accident.
-import type { Campaign, Domain, Lead, TeamMember } from "@/api/generated/model"
+import type {
+  ApiKey,
+  Campaign,
+  Domain,
+  Lead,
+  TeamMember,
+} from "@/api/generated/model"
 import { DEMO_CAMPAIGNS } from "@/components/campaigns/campaign-data"
 import { DEMO_LEADS } from "@/components/leads/data"
+import { DEMO_API_KEYS } from "@/components/settings/api-keys-data"
 import { DEMO_DOMAINS } from "@/components/settings/domains-data"
 import { DEMO_TEAM_MEMBERS } from "@/components/settings/team-data"
 
@@ -42,11 +49,13 @@ export const db = {
   campaigns: createTable<Campaign>(() => DEMO_CAMPAIGNS),
   teamMembers: createTable<TeamMember>(() => DEMO_TEAM_MEMBERS),
   domains: createTable<Domain>(() => DEMO_DOMAINS),
+  apiKeys: createTable<ApiKey>(() => DEMO_API_KEYS),
   /** Restores every table to its seed data. Called after each test. */
   reset() {
     db.leads.reset()
     db.campaigns.reset()
     db.teamMembers.reset()
     db.domains.reset()
+    db.apiKeys.reset()
   },
 }

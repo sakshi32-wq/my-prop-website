@@ -1,7 +1,11 @@
 import { useState } from "react"
 import { CopyIcon, KeyIcon, PlusIcon, TriangleAlertIcon } from "lucide-react"
+import { toast } from "sonner"
 
-import { copyToClipboard, randomToken } from "./utils"
+import { API_KEY_TYPES } from "./api-keys-data"
+import { copyToClipboard } from "./utils"
+import type { ApiKeyType } from "./api-keys-data"
+import { useCreateApiKey } from "@/api/generated/api-keys/api-keys"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,56 +39,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-export type ApiKeyType = "production" | "development"
-
-export type NewApiKey = { name: string; type: ApiKeyType; key: string }
-
-const KEY_TYPES: Array<{
-  value: ApiKeyType
-  label: string
-  description: string
-}> = [
-  {
-    value: "production",
-    label: "Production",
-    description: "For live applications",
-  },
-  {
-    value: "development",
-    label: "Development",
-    description: "For testing and development",
-  },
-]
+import { Spinner } from "@/components/ui/spinner"
 
 export function GenerateApiKeyDialog({
   open,
   onOpenChange,
-  onGenerate,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onGenerate: (key: NewApiKey) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
         {/* Remounts on every open, so the form always starts empty. */}
-        <GenerateKeyFlow onGenerate={onGenerate} />
+        <GenerateKeyFlow />
       </DialogContent>
     </Dialog>
   )
 }
 
-function GenerateKeyFlow({
-  onGenerate,
-}: {
-  onGenerate: (key: NewApiKey) => void
-}) {
+function GenerateKeyFlow() {
   const [name, setName] = useState("")
   const [type, setType] = useState<ApiKeyType>("production")
   const [submitted, setSubmitted] = useState(false)
-  const [generated, setGenerated] = useState<NewApiKey | null>(null)
+  // The create response is the only place the full secret ever appears.
+  const createKey = useCreateApiKey({
+    mutation: {
+      onSuccess: (key) => toast.success(`${key.name} created`),
+    },
+  })
+  const generated = createKey.data
 
   const nameError =
     submitted && !name.trim() ? "Key name is required." : undefined
@@ -93,14 +77,7 @@ function GenerateKeyFlow({
     event.preventDefault()
     setSubmitted(true)
     if (!name.trim()) return
-    const prefix = type === "production" ? "sk_live_" : "sk_test_"
-    const key: NewApiKey = {
-      name: name.trim(),
-      type,
-      key: prefix + randomToken(32),
-    }
-    onGenerate(key)
-    setGenerated(key)
+    createKey.mutate({ data: { name: name.trim(), type } })
   }
 
   if (generated) {
@@ -121,7 +98,7 @@ function GenerateKeyFlow({
             <InputGroupInput
               id="generatedKey"
               readOnly
-              value={generated.key}
+              value={generated.secret}
               className="font-mono"
               onFocus={(e) => e.currentTarget.select()}
             />
@@ -129,7 +106,9 @@ function GenerateKeyFlow({
               <InputGroupButton
                 size="icon-xs"
                 aria-label="Copy API key"
-                onClick={() => copyToClipboard(generated.key, "API key copied")}
+                onClick={() =>
+                  copyToClipboard(generated.secret, "API key copied")
+                }
               >
                 <CopyIcon />
               </InputGroupButton>
@@ -189,12 +168,12 @@ function GenerateKeyFlow({
           >
             <SelectTrigger id="apiKeyType" className="w-full">
               <SelectValue>
-                {KEY_TYPES.find((t) => t.value === type)?.label}
+                {API_KEY_TYPES.find((t) => t.value === type)?.label}
               </SelectValue>
             </SelectTrigger>
             <SelectContent position="popper">
               <SelectGroup>
-                {KEY_TYPES.map((t) => (
+                {API_KEY_TYPES.map((t) => (
                   <SelectItem key={t.value} value={t.value}>
                     <div className="flex flex-col">
                       <span className="font-medium">{t.label}</span>
@@ -226,8 +205,12 @@ function GenerateKeyFlow({
             Cancel
           </Button>
         </DialogClose>
-        <Button type="submit">
-          <PlusIcon data-icon="inline-start" />
+        <Button type="submit" disabled={createKey.isPending}>
+          {createKey.isPending ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <PlusIcon data-icon="inline-start" />
+          )}
           Generate Key
         </Button>
       </DialogFooter>

@@ -2,26 +2,40 @@
 // way in and out, so callers can't mutate the store by accident.
 import type {
   ApiKey,
+  Automation,
   Campaign,
   DashboardOverview,
   Domain,
   Integration,
+  Invoice,
   Lead,
+  LeadActivity,
+  LighthouseReport,
+  Notification,
   NotificationPreferences,
   Profile,
   TeamMember,
+  SavedGeneration,
+  Subscription,
   Template,
   Website,
   WebsiteContent,
 } from "@/api/generated/model"
+import { DEMO_GENERATIONS } from "@/components/ai-studio/data"
+import { DEMO_NOTIFICATIONS } from "@/components/app-shell/notifications-data"
+import { DEMO_AUTOMATIONS } from "@/components/campaigns/automation/automation-data"
 import { DEMO_CAMPAIGNS } from "@/components/campaigns/campaign-data"
 import { DEMO_DASHBOARD_OVERVIEW } from "@/components/dashboard/data"
-import { DEMO_LEADS } from "@/components/leads/data"
+import { DEMO_LEADS, DEMO_LEAD_ACTIVITIES } from "@/components/leads/data"
 import {
   DEMO_NOTIFICATION_PREFERENCES,
   DEMO_PROFILE,
 } from "@/components/settings/account-data"
 import { DEMO_API_KEYS } from "@/components/settings/api-keys-data"
+import {
+  DEMO_INVOICES,
+  DEMO_SUBSCRIPTION,
+} from "@/components/settings/billing-data"
 import { DEMO_DOMAINS } from "@/components/settings/domains-data"
 import { DEMO_INTEGRATIONS } from "@/components/settings/integrations-data"
 import { DEMO_TEAM_MEMBERS } from "@/components/settings/team-data"
@@ -79,13 +93,16 @@ function createSingleton<TValue extends object>(seed: TValue) {
 
 export const db = {
   leads: createTable<Lead>(() => DEMO_LEADS),
+  leadActivities: createTable<LeadActivity>(() => DEMO_LEAD_ACTIVITIES),
   campaigns: createTable<Campaign>(() => DEMO_CAMPAIGNS),
+  automations: createTable<Automation>(() => DEMO_AUTOMATIONS),
   teamMembers: createTable<TeamMember>(() => DEMO_TEAM_MEMBERS),
   domains: createTable<Domain>(() => DEMO_DOMAINS),
   apiKeys: createTable<ApiKey>(() => DEMO_API_KEYS),
   integrations: createTable<Integration>(() => DEMO_INTEGRATIONS),
   templates: createTable<Template>(() => DEMO_TEMPLATES),
   websites: createTable<Website>(() => DEMO_WEBSITES),
+  lighthouseReports: createTable<LighthouseReport>(() => []),
   websiteContents: createTable<StoredWebsiteContent>(() =>
     DEMO_WEBSITES.map((website) => ({
       id: website.id,
@@ -95,26 +112,41 @@ export const db = {
       savedAt: null,
     }))
   ),
-  profile: createSingleton<Profile>(DEMO_PROFILE),
+  /** Accounts; the first one is the demo user. */
+  users: createTable<Profile>(() => [DEMO_PROFILE]),
+  /** Session tokens (the row id) mapped to their user. */
+  sessions: createTable<{ id: string; userId: string }>(() => []),
   notificationPreferences: createSingleton<NotificationPreferences>(
     DEMO_NOTIFICATION_PREFERENCES
   ),
+  notifications: createTable<Notification>(() => DEMO_NOTIFICATIONS),
+  generations: createTable<SavedGeneration>(() => DEMO_GENERATIONS),
   dashboardOverview: createSingleton<DashboardOverview>(
     DEMO_DASHBOARD_OVERVIEW
   ),
+  subscription: createSingleton<Subscription>(DEMO_SUBSCRIPTION),
+  invoices: createTable<Invoice>(() => DEMO_INVOICES),
   /** Restores every table to its seed data. Called after each test. */
   reset() {
     db.leads.reset()
+    db.leadActivities.reset()
     db.campaigns.reset()
+    db.automations.reset()
     db.teamMembers.reset()
     db.domains.reset()
     db.apiKeys.reset()
     db.integrations.reset()
     db.templates.reset()
     db.websites.reset()
+    db.lighthouseReports.reset()
     db.websiteContents.reset()
-    db.profile.reset()
+    db.users.reset()
+    db.sessions.reset()
     db.notificationPreferences.reset()
     db.dashboardOverview.reset()
+    db.notifications.reset()
+    db.generations.reset()
+    db.subscription.reset()
+    db.invoices.reset()
   },
 }

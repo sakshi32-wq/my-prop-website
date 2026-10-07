@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router"
 import { ArrowLeftIcon, MailCheckIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { useRequestPasswordReset } from "@/api/generated/auth/auth"
 import { focusFirstInvalid, validateEmail } from "@/components/auth/validation"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 
 function BackToSignIn() {
   return (
@@ -29,6 +31,16 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [sentTo, setSentTo] = useState<string | null>(null)
+  const requestReset = useRequestPasswordReset({
+    mutation: {
+      onSuccess: (_data, { data }) => {
+        setSentTo(data.email)
+        toast.success("Reset link sent", {
+          description: `Sent to ${data.email}`,
+        })
+      },
+    },
+  })
 
   const error = submitted ? validateEmail(email) : undefined
 
@@ -39,9 +51,7 @@ export function ForgotPasswordForm() {
       focusFirstInvalid(event.currentTarget)
       return
     }
-    const address = email.trim()
-    setSentTo(address)
-    toast.success("Reset link sent", { description: `Sent to ${address}` })
+    requestReset.mutate({ data: { email: email.trim() } })
   }
 
   function reset() {
@@ -91,7 +101,10 @@ export function ForgotPasswordForm() {
           <FieldError id="email-error">{error}</FieldError>
         </Field>
         <Field>
-          <Button type="submit">Send reset link</Button>
+          <Button type="submit" disabled={requestReset.isPending}>
+            {requestReset.isPending && <Spinner data-icon="inline-start" />}
+            Send reset link
+          </Button>
           <BackToSignIn />
         </Field>
       </FieldGroup>

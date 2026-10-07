@@ -1,16 +1,9 @@
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
 import { toast } from "sonner"
 
-import {
-  buildCopy,
-  buildFaqs,
-  buildSocialPosts,
-  buildWhatsApp,
-  faqText,
-  platformLabel,
-  socialPostText,
-} from "./content"
-import type { ContentFormData, ContentToolId } from "./data"
+import { faqText, platformLabel, socialPostText } from "./content"
+import type { CopyContent, Faq, SocialPost, TitledText } from "./content"
+import type { AiGeneration } from "@/api/generated/model"
 import { CopyButton } from "./copy-button"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -52,8 +45,7 @@ function OutputBlock({
   )
 }
 
-function CopyOutput({ data }: { data: ContentFormData }) {
-  const copy = buildCopy(data)
+function CopyOutput({ copy }: { copy: CopyContent }) {
   return (
     <Tabs defaultValue="hero">
       <TabsList className="w-full">
@@ -153,10 +145,10 @@ function CopyOutput({ data }: { data: ContentFormData }) {
   )
 }
 
-function WhatsAppOutput({ data }: { data: ContentFormData }) {
+function WhatsAppOutput({ messages }: { messages: Array<TitledText> }) {
   return (
     <div className="flex flex-col gap-4">
-      {buildWhatsApp(data).map((message, index) => (
+      {messages.map((message, index) => (
         <OutputBlock
           key={message.title}
           label={`Message ${index + 1}`}
@@ -172,11 +164,17 @@ function WhatsAppOutput({ data }: { data: ContentFormData }) {
   )
 }
 
-function SocialOutput({ data }: { data: ContentFormData }) {
-  const platform = platformLabel(data.platform)
+function SocialOutput({
+  posts,
+  platform: platformValue,
+}: {
+  posts: Array<SocialPost>
+  platform: string
+}) {
+  const platform = platformLabel(platformValue)
   return (
     <div className="flex flex-col gap-4">
-      {buildSocialPosts(data).map((post, index) => (
+      {posts.map((post, index) => (
         <OutputBlock
           key={post.title}
           label={`${platform} Post ${index + 1}`}
@@ -199,10 +197,10 @@ function SocialOutput({ data }: { data: ContentFormData }) {
   )
 }
 
-function FaqOutput({ data }: { data: ContentFormData }) {
+function FaqOutput({ faqs }: { faqs: Array<Faq> }) {
   return (
     <div className="flex flex-col gap-3">
-      {buildFaqs(data).map((faq, index) => (
+      {faqs.map((faq, index) => (
         <Collapsible
           key={faq.q}
           defaultOpen={index === 0}
@@ -233,17 +231,13 @@ function FaqOutput({ data }: { data: ContentFormData }) {
   )
 }
 
-export function GeneratedOutput({
-  tool,
-  data,
-}: {
-  tool: ContentToolId
-  data: ContentFormData
-}) {
-  if (tool === "copy") return <CopyOutput data={data} />
-  if (tool === "whatsapp") return <WhatsAppOutput data={data} />
-  if (tool === "social") return <SocialOutput data={data} />
-  return <FaqOutput data={data} />
+export function GeneratedOutput({ generation }: { generation: AiGeneration }) {
+  const { copy, messages, posts, faqs } = generation.content
+  if (copy) return <CopyOutput copy={copy} />
+  if (messages) return <WhatsAppOutput messages={messages} />
+  if (posts)
+    return <SocialOutput posts={posts} platform={generation.input.platform} />
+  return <FaqOutput faqs={faqs ?? []} />
 }
 
 export function GeneratedOutputSkeleton() {

@@ -1,22 +1,36 @@
-import { subDays, subHours } from "date-fns"
+import { subDays, subHours, subMinutes } from "date-fns"
 import {
+  ArrowRightLeftIcon,
+  CalendarCheckIcon,
+  ClockIcon,
   GlobeIcon,
+  MailIcon,
   MessageSquareIcon,
+  PhoneIcon,
   Share2Icon,
   UserIcon,
   UserPlusIcon,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-import type { Lead, LeadSource } from "@/api/generated/model"
+import type {
+  CallLogInput,
+  Lead,
+  LeadActivity,
+  LeadActivityType,
+  LeadSource,
+} from "@/api/generated/model"
 import { LEAD_SOURCES, LEAD_STAGES } from "@/lib/mock-data"
 
 export type {
+  CallLogInput,
   Lead,
+  LeadActivity,
   LeadInput,
   LeadSource,
   LeadStage,
   LeadUpdate,
+  SiteVisitInput,
 } from "@/api/generated/model"
 
 export const SOURCE_ICONS: Record<LeadSource, LucideIcon> = {
@@ -25,6 +39,67 @@ export const SOURCE_ICONS: Record<LeadSource, LucideIcon> = {
   social: Share2Icon,
   referral: UserPlusIcon,
   "walk-in": UserIcon,
+}
+
+export const ACTIVITY_ICONS: Record<LeadActivityType, LucideIcon> = {
+  captured: ClockIcon,
+  "stage-change": ArrowRightLeftIcon,
+  call: PhoneIcon,
+  whatsapp: MessageSquareIcon,
+  email: MailIcon,
+  "site-visit": CalendarCheckIcon,
+}
+
+export const CALL_OUTCOMES = [
+  { value: "connected", label: "Connected - Discussed" },
+  { value: "interested", label: "Interested - Will Visit" },
+  { value: "callback", label: "Call Back Later" },
+  { value: "not-interested", label: "Not Interested" },
+  { value: "wrong-number", label: "Wrong Number" },
+  { value: "no-answer", label: "No Answer" },
+  { value: "voicemail", label: "Voicemail Left" },
+] as const satisfies ReadonlyArray<{
+  value: CallLogInput["outcome"]
+  label: string
+}>
+
+export const CALL_NEXT_ACTIONS = [
+  { value: "schedule-visit", label: "Schedule Site Visit" },
+  { value: "send-brochure", label: "Send Property Brochure" },
+  { value: "follow-up", label: "Follow Up in 2-3 Days" },
+  { value: "send-payment-plan", label: "Send Payment Plan" },
+  { value: "escalate", label: "Escalate to Manager" },
+  { value: "none", label: "No Action Required" },
+]
+
+export const CALL_DURATIONS = [
+  { value: "less-1min", label: "Less than 1 minute" },
+  { value: "1-3min", label: "1-3 minutes" },
+  { value: "3-5min", label: "3-5 minutes" },
+  { value: "5-10min", label: "5-10 minutes" },
+  { value: "10plus", label: "More than 10 minutes" },
+]
+
+export const SALES_REPS = [
+  { value: "Amit Sharma", label: "Amit Sharma (Senior Sales)" },
+  { value: "Priya Singh", label: "Priya Singh (Sales Manager)" },
+  { value: "Rajesh Kumar", label: "Rajesh Kumar (Sales Executive)" },
+  { value: "Neha Patel", label: "Neha Patel (Sales Associate)" },
+]
+
+export const VISIT_REMINDERS = [
+  { value: "15min", label: "15 minutes before" },
+  { value: "30min", label: "30 minutes before" },
+  { value: "1hour", label: "1 hour before" },
+  { value: "2hours", label: "2 hours before" },
+  { value: "1day", label: "1 day before" },
+]
+
+export function optionLabel(
+  options: ReadonlyArray<{ value: string; label: string }>,
+  value: string | undefined
+) {
+  return options.find((option) => option.value === value)?.label
 }
 
 export function sourceLabel(source: string) {
@@ -170,3 +245,42 @@ export const DEMO_LEADS: Array<Lead> = [
     addedAt: subDays(now, 7).toISOString(),
   },
 ]
+
+/** Seed timeline for each demo lead (src/mocks/db.ts). */
+export const DEMO_LEAD_ACTIVITIES: Array<LeadActivity> = DEMO_LEADS.flatMap(
+  (lead, index) => {
+    const id = (n: number) =>
+      `${lead.id.slice(0, -4)}${(index * 3 + n).toString(16).padStart(4, "0")}`
+    const activities: Array<LeadActivity> = [
+      {
+        id: id(1),
+        leadId: lead.id,
+        type: "captured",
+        title: `Lead captured via ${sourceLabel(lead.source)}`,
+        description: lead.project,
+        createdAt: lead.addedAt,
+      },
+    ]
+    // Leads older than a couple of hours already have some follow-up.
+    if (Date.parse(lead.addedAt) < subHours(now, 2).getTime())
+      activities.push(
+        {
+          id: id(2),
+          leadId: lead.id,
+          type: "whatsapp",
+          title: "WhatsApp message sent",
+          description: "",
+          createdAt: subHours(now, 1).toISOString(),
+        },
+        {
+          id: id(3),
+          leadId: lead.id,
+          type: "email",
+          title: "Email follow-up sent",
+          description: "",
+          createdAt: subMinutes(now, 30).toISOString(),
+        }
+      )
+    return activities
+  }
+)

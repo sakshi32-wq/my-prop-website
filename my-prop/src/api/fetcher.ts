@@ -27,6 +27,16 @@ function errorMessage(body: unknown) {
   return undefined
 }
 
+/** Stores (or with null, clears) the session token sent with every request. */
+export function setAuthToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token)
+    else localStorage.removeItem(TOKEN_STORAGE_KEY)
+  } catch {
+    // Storage is blocked; the session just won't survive a reload.
+  }
+}
+
 function readToken() {
   try {
     return localStorage.getItem(TOKEN_STORAGE_KEY)

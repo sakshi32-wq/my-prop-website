@@ -20,7 +20,7 @@ import { toast } from "sonner"
 import { AddStepDialog } from "./add-step-dialog"
 import { AutomationHeader } from "./automation-header"
 import { STEP_TYPES, createStep, initialSteps } from "./automation-data"
-import type { AutomationStep, StepType } from "./automation-data"
+import type { Automation, AutomationStep, StepType } from "./automation-data"
 import { EditStepDialog } from "./edit-step-dialog"
 import { Connector, SortableStepNode, StepNode } from "./step-node"
 import {
@@ -33,6 +33,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  useCreateAutomation,
+  useListAutomations,
+  useSaveAutomation,
+} from "@/api/generated/automations/automations"
+import { QueryError } from "@/components/query-error"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -41,13 +47,59 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
 
 type OpenDialog = "add" | "edit" | "delete" | null
 
+/**
+ * Loads the workspace's automations and edits the first one. With none
+ * saved yet, the first Save creates it.
+ */
 export function AutomationBuilder() {
-  const [name, setName] = useState("New Automation")
+  const automationsQuery = useListAutomations()
+
+  if (automationsQuery.isPending)
+    return (
+      <div
+        className="flex flex-col gap-6"
+        aria-busy="true"
+        aria-label="Loading automation"
+      >
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-96 rounded-xl" />
+      </div>
+    )
+  if (automationsQuery.isError)
+    return (
+      <QueryError
+        title="Couldn't load your automation"
+        error={automationsQuery.error}
+        onRetry={() => void automationsQuery.refetch()}
+      />
+    )
+  const automation = automationsQuery.data.at(0)
+  // Keyed so the editor starts over once a new automation gets its id.
+  return <AutomationEditor key={automation?.id ?? "new"} saved={automation} />
+}
+
+function AutomationEditor({ saved }: { saved: Automation | undefined }) {
+  const [name, setName] = useState(saved?.name ?? "New Automation")
   // The trigger is always the first step.
-  const [steps, setSteps] = useState<AutomationStep[]>(initialSteps)
+  const [steps, setSteps] = useState<AutomationStep[]>(
+    () => saved?.steps ?? initialSteps()
+  )
+  const onSaved = (automation: Automation) =>
+    toast.success(`"${automation.name}" saved`, {
+      description: `${automation.steps.length} steps configured`,
+    })
+  const createAutomation = useCreateAutomation({
+    mutation: { onSuccess: onSaved },
+  })
+  const saveAutomationRequest = useSaveAutomation({
+    mutation: { onSuccess: onSaved },
+  })
+  const saving = createAutomation.isPending || saveAutomationRequest.isPending
   const [dialog, setDialog] = useState<OpenDialog>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = steps.find((s) => s.id === selectedId)
@@ -103,9 +155,9 @@ export function AutomationBuilder() {
       toast.error("Add at least one step after the trigger")
       return
     }
-    toast.success(`"${name}" saved`, {
-      description: `${steps.length} steps configured`,
-    })
+    const data = { name, steps }
+    if (saved) saveAutomationRequest.mutate({ automationId: saved.id, data })
+    else createAutomation.mutate({ data })
   }
 
   return (
@@ -115,8 +167,12 @@ export function AutomationBuilder() {
         onNameChange={setName}
         stepCount={steps.length}
         action={
-          <Button onClick={saveAutomation}>
-            <SaveIcon data-icon="inline-start" />
+          <Button onClick={saveAutomation} disabled={saving}>
+            {saving ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <SaveIcon data-icon="inline-start" />
+            )}
             Save Automation
           </Button>
         }

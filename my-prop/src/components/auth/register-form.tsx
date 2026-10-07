@@ -1,7 +1,10 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 
+import { setAuthToken } from "@/api/fetcher"
+import { useRegister } from "@/api/generated/auth/auth"
 import { PasswordInput } from "@/components/auth/password-input"
 import { SocialAuth } from "@/components/auth/social-auth"
 import {
@@ -22,6 +25,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 
 const MIN_PASSWORD = 8
 
@@ -88,8 +92,21 @@ function TextField({
 
 export function RegisterForm() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [values, setValues] = useState<Values>(INITIAL)
   const [submitted, setSubmitted] = useState(false)
+  const register = useRegister({
+    mutation: {
+      onSuccess: (session) => {
+        setAuthToken(session.token)
+        queryClient.removeQueries()
+        toast.success(`Welcome to myprop.live, ${session.user.firstName}!`, {
+          description: "Your account has been created.",
+        })
+        void navigate({ to: "/app" })
+      },
+    },
+  })
 
   const errors: Partial<ReturnType<typeof validate>> = submitted
     ? validate(values)
@@ -107,10 +124,15 @@ export function RegisterForm() {
       focusFirstInvalid(event.currentTarget)
       return
     }
-    toast.success(`Welcome to myprop.live, ${values.firstName.trim()}!`, {
-      description: "Your account has been created.",
+    register.mutate({
+      data: {
+        firstName: values.firstName.trim(),
+        lastName: values.lastName.trim(),
+        email: values.email.trim(),
+        company: values.company.trim(),
+        password: values.password,
+      },
     })
-    void navigate({ to: "/app" })
   }
 
   return (
@@ -211,7 +233,10 @@ export function RegisterForm() {
           </FieldContent>
         </Field>
         <Field>
-          <Button type="submit">Create account</Button>
+          <Button type="submit" disabled={register.isPending}>
+            {register.isPending && <Spinner data-icon="inline-start" />}
+            Create account
+          </Button>
         </Field>
         <SocialAuth />
       </FieldGroup>

@@ -1,7 +1,10 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 
+import { setAuthToken } from "@/api/fetcher"
+import { useLogin } from "@/api/generated/auth/auth"
 import { PasswordInput } from "@/components/auth/password-input"
 import { SocialAuth } from "@/components/auth/social-auth"
 import {
@@ -19,6 +22,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 
 function validate(values: { email: string; password: string }) {
   return {
@@ -29,9 +33,23 @@ function validate(values: { email: string; password: string }) {
 
 export function LoginForm() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [values, setValues] = useState({ email: "", password: "" })
   const [remember, setRemember] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const login = useLogin({
+    mutation: {
+      onSuccess: (session) => {
+        setAuthToken(session.token)
+        // Cached data belonged to whoever was signed in before.
+        queryClient.removeQueries()
+        toast.success(`Welcome back, ${session.user.firstName}!`, {
+          description: remember ? "We'll keep you signed in." : undefined,
+        })
+        void navigate({ to: "/app" })
+      },
+    },
+  })
 
   const errors: Partial<ReturnType<typeof validate>> = submitted
     ? validate(values)
@@ -49,10 +67,9 @@ export function LoginForm() {
       focusFirstInvalid(event.currentTarget)
       return
     }
-    toast.success("Welcome back!", {
-      description: remember ? "We'll keep you signed in." : undefined,
+    login.mutate({
+      data: { email: values.email.trim(), password: values.password, remember },
     })
-    void navigate({ to: "/app" })
   }
 
   return (
@@ -104,7 +121,10 @@ export function LoginForm() {
           </FieldLabel>
         </Field>
         <Field>
-          <Button type="submit">Sign in</Button>
+          <Button type="submit" disabled={login.isPending}>
+            {login.isPending && <Spinner data-icon="inline-start" />}
+            Sign in
+          </Button>
         </Field>
         <SocialAuth />
       </FieldGroup>

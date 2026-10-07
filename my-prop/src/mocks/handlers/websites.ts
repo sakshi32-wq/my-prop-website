@@ -5,10 +5,12 @@ import { db } from "../db"
 import { apiPath, errorResponse, isRecord, readJson } from "../utils"
 import type {
   Error as ErrorBody,
+  LighthouseReport,
   Website,
   WebsiteContent,
   WebsiteInfo,
 } from "@/api/generated/model"
+import { demoLighthouseReport } from "@/components/websites/lighthouse/data"
 import { PHOTOS, unsplash } from "@/lib/mock-data"
 
 type WebsiteParams = { websiteId: string }
@@ -83,7 +85,38 @@ function toContent({ id: _id, ...content }: WebsiteContent & { id: string }) {
   return content
 }
 
+/** Audits take a while in the browser; tests shouldn't wait for them. */
+const AUDIT_MS = import.meta.env.MODE === "test" ? 5 : 2500
+
 export const websiteHandlers = [
+  http.get<WebsiteParams, never, LighthouseReport | ErrorBody>(
+    apiPath("/websites/:websiteId/lighthouse"),
+    async ({ params }) => {
+      await delay()
+      if (!db.websites.find(params.websiteId)) return notFound()
+      const latest = db.lighthouseReports
+        .all()
+        .filter((r) => r.websiteId === params.websiteId)
+        .sort((a, b) => Date.parse(b.ranAt) - Date.parse(a.ranAt))
+        .at(0)
+      return latest
+        ? HttpResponse.json(latest)
+        : errorResponse(404, "This website hasn't been audited yet.")
+    }
+  ),
+
+  http.post<WebsiteParams, never, LighthouseReport | ErrorBody>(
+    apiPath("/websites/:websiteId/lighthouse"),
+    async ({ params }) => {
+      await delay(AUDIT_MS)
+      if (!db.websites.find(params.websiteId)) return notFound()
+      const report = db.lighthouseReports.insert(
+        demoLighthouseReport(params.websiteId)
+      )
+      return HttpResponse.json(report, { status: 201 })
+    }
+  ),
+
   http.get<never, never, Array<Website>>(
     apiPath("/websites"),
     async ({ request }) => {

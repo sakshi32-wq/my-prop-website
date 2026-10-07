@@ -30,6 +30,7 @@ import type {
 } from "@tanstack/react-query"
 
 import type {
+  LighthouseReport,
   ListWebsitesParams,
   NotFoundResponse,
   UnauthorizedResponse,
@@ -966,6 +967,302 @@ export const usePublishWebsite = <
   const backupQueryClient = useQueryClient()
   return useMutation(
     getPublishWebsiteMutationOptions(queryClient ?? backupQueryClient, options),
+    queryClient
+  )
+}
+export const getGetLatestLighthouseReportUrl = (websiteId: string) => {
+  return `/websites/${websiteId}/lighthouse`
+}
+
+/**
+ * @summary The website's most recent Lighthouse report (404 if never run)
+ */
+export const getLatestLighthouseReport = async (
+  websiteId: string,
+  options?: Parameters<typeof customFetch>[1]
+): Promise<LighthouseReport> => {
+  return customFetch<LighthouseReport>(
+    getGetLatestLighthouseReportUrl(websiteId),
+    {
+      ...options,
+      method: "GET",
+    }
+  )
+}
+
+export const getGetLatestLighthouseReportQueryKey = (websiteId: string) => {
+  return [`/websites/${websiteId}/lighthouse`] as const
+}
+
+export const getGetLatestLighthouseReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  websiteId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+        TError,
+        TData
+      >
+    >
+    request?: SecondParameter<typeof customFetch>
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLatestLighthouseReportQueryKey(websiteId)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLatestLighthouseReport>>
+  > = ({ signal }) =>
+    getLatestLighthouseReport(websiteId, { signal, ...requestOptions })
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: websiteId !== null && websiteId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetLatestLighthouseReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLatestLighthouseReport>>
+>
+export type GetLatestLighthouseReportQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>
+
+export function useGetLatestLighthouseReport<
+  TData = Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  websiteId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+          TError,
+          Awaited<ReturnType<typeof getLatestLighthouseReport>>
+        >,
+        "initialData"
+      >
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetLatestLighthouseReport<
+  TData = Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  websiteId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+          TError,
+          Awaited<ReturnType<typeof getLatestLighthouseReport>>
+        >,
+        "initialData"
+      >
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetLatestLighthouseReport<
+  TData = Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  websiteId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+        TError,
+        TData
+      >
+    >
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary The website's most recent Lighthouse report (404 if never run)
+ */
+
+export function useGetLatestLighthouseReport<
+  TData = Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  websiteId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getLatestLighthouseReport>>,
+        TError,
+        TData
+      >
+    >
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetLatestLighthouseReportQueryOptions(
+    websiteId,
+    options
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const getRunLighthouseAuditUrl = (websiteId: string) => {
+  return `/websites/${websiteId}/lighthouse`
+}
+
+/**
+ * @summary Run a Lighthouse audit now and return its report
+ */
+export const runLighthouseAudit = async (
+  websiteId: string,
+  options?: Parameters<typeof customFetch>[1]
+): Promise<LighthouseReport> => {
+  return customFetch<LighthouseReport>(getRunLighthouseAuditUrl(websiteId), {
+    ...options,
+    method: "POST",
+  })
+}
+
+export const getRunLighthouseAuditMutationKey = () =>
+  ["runLighthouseAudit"] as const
+
+export const getRunLighthouseAuditMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(
+  queryClient: QueryClient,
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof runLighthouseAudit>>,
+      TError,
+      RunLighthouseAuditMutationVariables,
+      TContext
+    >
+    skipInvalidation?: boolean
+    request?: SecondParameter<typeof customFetch>
+  }
+): UseMutationOptions<
+  Awaited<ReturnType<typeof runLighthouseAudit>>,
+  TError,
+  RunLighthouseAuditMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRunLighthouseAuditMutationKey()
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof runLighthouseAudit>>,
+    RunLighthouseAuditMutationVariables
+  > = (props) => {
+    const { websiteId } = props ?? {}
+
+    return runLighthouseAudit(websiteId, requestOptions)
+  }
+
+  const onSuccess = (
+    data: Awaited<ReturnType<typeof runLighthouseAudit>>,
+    variables: RunLighthouseAuditMutationVariables,
+    onMutateResult: TContext,
+    context: MutationFunctionContext
+  ) => {
+    if (!options?.skipInvalidation) {
+      queryClient.invalidateQueries({
+        queryKey: getGetLatestLighthouseReportQueryKey(variables.websiteId),
+      })
+    }
+    mutationOptions?.onSuccess?.(data, variables, onMutateResult, context)
+  }
+
+  return { ...mutationOptions, mutationFn, onSuccess }
+}
+
+export type RunLighthouseAuditMutationResult = NonNullable<
+  Awaited<ReturnType<typeof runLighthouseAudit>>
+>
+
+export type RunLighthouseAuditMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>
+export type RunLighthouseAuditMutationVariables = { websiteId: string }
+
+/**
+ * @summary Run a Lighthouse audit now and return its report
+ */
+export const useRunLighthouseAudit = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof runLighthouseAudit>>,
+      TError,
+      RunLighthouseAuditMutationVariables,
+      TContext
+    >
+    skipInvalidation?: boolean
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof runLighthouseAudit>>,
+  TError,
+  RunLighthouseAuditMutationVariables,
+  TContext
+> => {
+  const backupQueryClient = useQueryClient()
+  return useMutation(
+    getRunLighthouseAuditMutationOptions(
+      queryClient ?? backupQueryClient,
+      options
+    ),
     queryClient
   )
 }

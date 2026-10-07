@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
 import { ProfileTab } from "./profile-tab"
+import { DEMO_PROFILE } from "./account-data"
 import { db } from "@/mocks/db"
 import { server } from "@/mocks/node"
 import { apiPath } from "@/mocks/utils"
@@ -11,7 +12,7 @@ import { renderWithClient } from "@/test/render"
 
 describe("ProfileTab", () => {
   it("loads the profile and preferences from the API", async () => {
-    db.profile.update({ company: "Seeded Realty" })
+    db.users.update(DEMO_PROFILE.id, { company: "Seeded Realty" })
     renderWithClient(<ProfileTab />)
 
     expect(screen.getByLabelText("Loading profile")).toBeInTheDocument()
@@ -33,7 +34,7 @@ describe("ProfileTab", () => {
     await user.click(screen.getByRole("button", { name: /Save Changes/ }))
 
     expect(await screen.findByText("Profile updated")).toBeVisible()
-    expect(db.profile.get().firstName).toBe("Jane")
+    expect(db.users.find(DEMO_PROFILE.id)?.firstName).toBe("Jane")
   })
 
   it("toggles a preference optimistically", async () => {

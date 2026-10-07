@@ -1,17 +1,21 @@
 import { useState } from "react"
-import {
-  BellIcon,
-  CheckIcon,
-  CircleAlertIcon,
-  GlobeIcon,
-  MessageSquareIcon,
-  SendIcon,
-  Trash2Icon,
-  TrendingUpIcon,
-  UserPlusIcon,
-} from "lucide-react"
-import type { LucideIcon } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
+import { formatDistanceToNow } from "date-fns"
+import { BellIcon, CheckIcon, Trash2Icon } from "lucide-react"
 
+import { NOTIFICATION_ICONS } from "./notifications-data"
+import {
+  optimisticMarkAllRead,
+  optimisticNotificationDelete,
+  optimisticNotificationUpdate,
+} from "./notifications-optimistic"
+import {
+  useDeleteNotification,
+  useListNotifications,
+  useMarkAllNotificationsRead,
+  useUpdateNotification,
+} from "@/api/generated/notifications/notifications"
+import { QueryError } from "@/components/query-error"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -37,80 +41,25 @@ import {
 } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-
-type Notification = {
-  id: number
-  title: string
-  message: string
-  time: string
-  read: boolean
-  icon: LucideIcon
-}
-
-const initialNotifications: Array<Notification> = [
-  {
-    id: 1,
-    title: "New Lead Captured",
-    message: "Rahul Sharma submitted an inquiry for Skyline Heights",
-    time: "2 min ago",
-    read: false,
-    icon: UserPlusIcon,
-  },
-  {
-    id: 2,
-    title: "Campaign Launched",
-    message: "Your WhatsApp campaign 'Marina Bay Launch' is now live",
-    time: "15 min ago",
-    read: false,
-    icon: SendIcon,
-  },
-  {
-    id: 3,
-    title: "Website Published",
-    message: "Green Valley Residency website is now live",
-    time: "1 hour ago",
-    read: false,
-    icon: GlobeIcon,
-  },
-  {
-    id: 4,
-    title: "Low Response Rate",
-    message: "Your Ocean View campaign has below average engagement",
-    time: "2 hours ago",
-    read: true,
-    icon: CircleAlertIcon,
-  },
-  {
-    id: 5,
-    title: "Message Received",
-    message: "You have 3 new WhatsApp messages from leads",
-    time: "3 hours ago",
-    read: true,
-    icon: MessageSquareIcon,
-  },
-  {
-    id: 6,
-    title: "Conversion Milestone",
-    message: "Congratulations! You've reached 100 conversions this month",
-    time: "5 hours ago",
-    read: true,
-    icon: TrendingUpIcon,
-  },
-]
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function NotificationsPopover() {
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [notifications, setNotifications] = useState(initialNotifications)
+  const notificationsQuery = useListNotifications()
+  const notifications = notificationsQuery.data ?? []
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  const markAsRead = (id: number) =>
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    )
-  const markAllAsRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-  const remove = (id: number) =>
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
+  // Small, reversible actions: optimistic, without success toasts.
+  const update = useUpdateNotification({
+    mutation: optimisticNotificationUpdate(queryClient),
+  })
+  const markAll = useMarkAllNotificationsRead({
+    mutation: optimisticMarkAllRead(queryClient),
+  })
+  const remove = useDeleteNotification({
+    mutation: optimisticNotificationDelete(queryClient),
+  })
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -139,14 +88,32 @@ export function NotificationsPopover() {
             </p>
           </div>
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+            <Button variant="ghost" size="sm" onClick={() => markAll.mutate()}>
               <CheckIcon data-icon="inline-start" />
               Mark all read
             </Button>
           )}
         </div>
         <Separator />
-        {notifications.length === 0 ? (
+        {notificationsQuery.isPending ? (
+          <div
+            className="flex flex-col gap-2 p-4"
+            aria-busy="true"
+            aria-label="Loading notifications"
+          >
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        ) : notificationsQuery.isError ? (
+          <div className="p-4">
+            <QueryError
+              title="Couldn't load notifications"
+              error={notificationsQuery.error}
+              onRetry={() => void notificationsQuery.refetch()}
+            />
+          </div>
+        ) : notifications.length === 0 ? (
           <Empty className="py-10">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -162,49 +129,61 @@ export function NotificationsPopover() {
           <>
             <ScrollArea className="h-[min(450px,60vh)]">
               <ItemGroup className="p-2">
-                {notifications.map((n) => (
-                  <Item
-                    key={n.id}
-                    size="sm"
-                    variant={n.read ? "default" : "muted"}
-                  >
-                    <ItemMedia variant="icon">
-                      <n.icon />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>
-                        {n.title}
+                {notifications.map((n) => {
+                  const Icon = NOTIFICATION_ICONS[n.type]
+                  return (
+                    <Item
+                      key={n.id}
+                      size="sm"
+                      variant={n.read ? "default" : "muted"}
+                    >
+                      <ItemMedia variant="icon">
+                        <Icon />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle>
+                          {n.title}
+                          {!n.read && (
+                            <span className="size-2 rounded-full bg-primary" />
+                          )}
+                        </ItemTitle>
+                        <ItemDescription>{n.message}</ItemDescription>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(n.createdAt, {
+                            addSuffix: true,
+                          })}
+                        </span>
+                      </ItemContent>
+                      <ItemActions>
                         {!n.read && (
-                          <span className="size-2 rounded-full bg-primary" />
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() =>
+                              update.mutate({
+                                notificationId: n.id,
+                                data: { read: true },
+                              })
+                            }
+                          >
+                            <CheckIcon />
+                            <span className="sr-only">Mark read</span>
+                          </Button>
                         )}
-                      </ItemTitle>
-                      <ItemDescription>{n.message}</ItemDescription>
-                      <span className="text-xs text-muted-foreground">
-                        {n.time}
-                      </span>
-                    </ItemContent>
-                    <ItemActions>
-                      {!n.read && (
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => markAsRead(n.id)}
+                          onClick={() =>
+                            remove.mutate({ notificationId: n.id })
+                          }
                         >
-                          <CheckIcon />
-                          <span className="sr-only">Mark read</span>
+                          <Trash2Icon />
+                          <span className="sr-only">Delete</span>
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => remove(n.id)}
-                      >
-                        <Trash2Icon />
-                        <span className="sr-only">Delete</span>
-                      </Button>
-                    </ItemActions>
-                  </Item>
-                ))}
+                      </ItemActions>
+                    </Item>
+                  )
+                })}
               </ItemGroup>
             </ScrollArea>
             <Separator />

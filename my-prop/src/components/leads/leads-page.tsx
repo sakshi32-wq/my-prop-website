@@ -35,8 +35,6 @@ import { cn } from "@/lib/utils"
 
 type LeadDialog = "edit" | "call" | "whatsapp" | "schedule" | "tags" | "delete"
 
-const EARLY_STAGES: Array<LeadStage> = ["new", "contacted", "interested"]
-
 export function LeadsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
@@ -94,10 +92,6 @@ export function LeadsPage() {
           description: "The lead was moved to Closed.",
         }),
     },
-  })
-  // Scheduling a visit already shows its own toast.
-  const advanceStage = useUpdateLead({
-    mutation: optimisticLeadUpdate(queryClient),
   })
   const duplicateLead = useCreateLead({
     mutation: {
@@ -224,16 +218,7 @@ export function LeadsPage() {
         {...dialogProps("whatsapp")}
         initialMessage={whatsAppMessage}
       />
-      <ScheduleVisitDialog
-        {...dialogProps("schedule")}
-        onScheduled={(lead) => {
-          if (EARLY_STAGES.includes(lead.stage))
-            advanceStage.mutate({
-              leadId: lead.id,
-              data: { stage: "scheduled" },
-            })
-        }}
-      />
+      <ScheduleVisitDialog {...dialogProps("schedule")} />
       <AddTagsDialog {...dialogProps("tags")} />
       <DeleteLeadDialog
         {...dialogProps("delete")}

@@ -1,7 +1,11 @@
-import { Link } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { LogOutIcon, SettingsIcon, UserIcon } from "lucide-react"
+import { toast } from "sonner"
 
+import { setAuthToken } from "@/api/fetcher"
 import { useGetMe } from "@/api/generated/account/account"
+import { useLogout } from "@/api/generated/auth/auth"
 import { fullName } from "@/components/settings/account-data"
 import { getInitials } from "@/components/settings/utils"
 
@@ -20,6 +24,20 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function UserMenu() {
   const { data: me } = useGetMe()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  // Sign out locally even if the server call fails.
+  const logout = useLogout({
+    mutation: {
+      meta: { errorToast: false },
+      onSettled: () => {
+        setAuthToken(null)
+        queryClient.removeQueries()
+        toast.success("Signed out")
+        void navigate({ to: "/login" })
+      },
+    },
+  })
   const name = me ? fullName(me) : ""
 
   return (
@@ -65,11 +83,12 @@ export function UserMenu() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link to="/login">
-              <LogOutIcon />
-              Logout
-            </Link>
+          <DropdownMenuItem
+            disabled={logout.isPending}
+            onSelect={() => logout.mutate()}
+          >
+            <LogOutIcon />
+            Logout
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

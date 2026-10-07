@@ -13,42 +13,22 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-export type StepType =
-  | "trigger"
-  | "whatsapp"
-  | "email"
-  | "sms"
-  | "wait"
-  | "condition"
-  | "assign"
-  | "tag"
-  | "score"
-  | "notification"
-  | "webhook"
+import type {
+  Automation,
+  AutomationStep,
+  AutomationStepConfig as StepConfig,
+  AutomationStepConfigDelayUnit as DelayUnit,
+  AutomationStepType as StepType,
+} from "@/api/generated/model"
 
-export type DelayUnit = "minutes" | "hours" | "days"
-
-export type StepConfig = {
-  trigger?: string
-  message?: string
-  subject?: string
-  delay?: number
-  delayUnit?: DelayUnit
-  condition?: string
-  assignTo?: string
-  tagName?: string
-  scoreValue?: number
-  notifyWho?: string
-  webhookUrl?: string
-}
-
-export type AutomationStep = {
-  id: string
-  type: StepType
-  name: string
-  description: string
-  config: StepConfig
-}
+export type {
+  Automation,
+  AutomationInput,
+  AutomationStep,
+  AutomationStepConfig as StepConfig,
+  AutomationStepConfigDelayUnit as DelayUnit,
+  AutomationStepType as StepType,
+} from "@/api/generated/model"
 
 export const STEP_TYPES: Record<
   StepType,
@@ -263,3 +243,14 @@ export function initialSteps(): AutomationStep[] {
     },
   ]
 }
+
+/** Seed data for the mock API (src/mocks/db.ts). */
+export const DEMO_AUTOMATIONS: Array<Automation> = [
+  {
+    id: "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a01",
+    name: "New Lead Nurture",
+    steps: initialSteps(),
+    createdAt: "2026-09-01T09:00:00.000Z",
+    updatedAt: "2026-09-01T09:00:00.000Z",
+  },
+]

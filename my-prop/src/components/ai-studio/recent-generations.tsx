@@ -1,4 +1,6 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { format, formatDistanceToNow } from "date-fns"
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -14,7 +16,10 @@ import { toast } from "sonner"
 import { getTool } from "./data"
 import type { Generation } from "./data"
 import { CopyButton } from "./copy-button"
+import { optimisticGenerationDelete } from "./optimistic"
 import { downloadFile, slugify } from "./utils"
+import { useDeleteGeneration, useListGenerations } from "@/api/generated/ai/ai"
+import { QueryError } from "@/components/query-error"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,9 +70,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { Skeleton } from "@/components/ui/skeleton"
 
 function generationText(item: Generation) {
-  return item.content ?? item.preview
+  return item.content || item.preview
+}
+
+function generationDate(item: Generation) {
+  return format(item.createdAt, "MMM d, yyyy - h:mm a")
 }
 
 function downloadGeneration(item: Generation) {
@@ -75,7 +85,7 @@ function downloadGeneration(item: Generation) {
     item.title,
     `Project: ${item.projectName}`,
     `Location: ${item.location}`,
-    `Date: ${item.date}`,
+    `Date: ${generationDate(item)}`,
     "",
     generationText(item),
     "",
@@ -101,13 +111,17 @@ function StatusBadge({ status }: { status: Generation["status"] }) {
   )
 }
 
-export function RecentGenerations({
-  generations,
-  onDelete,
-}: {
-  generations: Array<Generation>
-  onDelete: (id: string) => void
-}) {
+export function RecentGenerations() {
+  const queryClient = useQueryClient()
+  const generationsQuery = useListGenerations()
+  const generations = generationsQuery.data ?? []
+  const deleteGeneration = useDeleteGeneration({
+    mutation: {
+      ...optimisticGenerationDelete(queryClient),
+      onSuccess: (_data, _variables, { removed }) =>
+        toast.success("Generation deleted", { description: removed?.title }),
+    },
+  })
   const [historyOpen, setHistoryOpen] = useState(false)
   const [viewing, setViewing] = useState<Generation | null>(null)
   const [deleting, setDeleting] = useState<Generation | null>(null)
@@ -129,7 +143,23 @@ export function RecentGenerations({
           </CardAction>
         </CardHeader>
         <CardContent>
-          {generations.length === 0 ? (
+          {generationsQuery.isPending ? (
+            <div
+              className="flex flex-col gap-2"
+              aria-busy="true"
+              aria-label="Loading generations"
+            >
+              {Array.from({ length: 3 }, (_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : generationsQuery.isError ? (
+            <QueryError
+              title="Couldn't load your generations"
+              error={generationsQuery.error}
+              onRetry={() => void generationsQuery.refetch()}
+            />
+          ) : generations.length === 0 ? (
             <Empty className="p-4">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -148,7 +178,11 @@ export function RecentGenerations({
                   <button type="button" onClick={() => setViewing(item)}>
                     <ItemContent className="min-w-0 text-left">
                       <ItemTitle>{item.title}</ItemTitle>
-                      <ItemDescription>{item.timestamp}</ItemDescription>
+                      <ItemDescription>
+                        {formatDistanceToNow(item.createdAt, {
+                          addSuffix: true,
+                        })}
+                      </ItemDescription>
                     </ItemContent>
                     <ChevronRightIcon className="size-4 text-muted-foreground" />
                   </button>
@@ -215,7 +249,8 @@ export function RecentGenerations({
           <DialogHeader>
             <DialogTitle>{viewing?.title}</DialogTitle>
             <DialogDescription>
-              {viewing?.projectName} · {viewing?.location} · {viewing?.date}
+              {viewing?.projectName} · {viewing?.location} ·{" "}
+              {viewing && generationDate(viewing)}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto rounded-lg bg-muted p-4 text-sm leading-relaxed whitespace-pre-wrap">
@@ -257,11 +292,8 @@ export function RecentGenerations({
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (!deleting) return
-                onDelete(deleting.id)
-                toast.success("Generation deleted", {
-                  description: deleting.title,
-                })
+                if (deleting)
+                  deleteGeneration.mutate({ generationId: deleting.id })
               }}
             >
               Delete
@@ -290,7 +322,7 @@ function HistoryCard({
           <tool.icon className="size-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0 truncate">{item.title}</span>
         </CardTitle>
-        <CardDescription>{item.date}</CardDescription>
+        <CardDescription>{generationDate(item)}</CardDescription>
         <CardAction>
           <StatusBadge status={item.status} />
         </CardAction>

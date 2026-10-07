@@ -10,11 +10,18 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { sourceLabel } from "./data"
+import {
+  CALL_DURATIONS,
+  CALL_NEXT_ACTIONS,
+  CALL_OUTCOMES,
+  sourceLabel,
+} from "./data"
 import { LeadSummary } from "./lead-summary"
 import { OptionSelect } from "./option-select"
-import type { Lead } from "./data"
+import type { CallLogInput, Lead } from "./data"
+import { useLogLeadCall } from "@/api/generated/leads/leads"
 import { Badge } from "@/components/ui/badge"
+import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -36,33 +43,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 type CallStatus = "not-started" | "in-progress" | "completed"
-
-const OUTCOMES = [
-  { value: "connected", label: "Connected - Discussed" },
-  { value: "interested", label: "Interested - Will Visit" },
-  { value: "callback", label: "Call Back Later" },
-  { value: "not-interested", label: "Not Interested" },
-  { value: "wrong-number", label: "Wrong Number" },
-  { value: "no-answer", label: "No Answer" },
-  { value: "voicemail", label: "Voicemail Left" },
-]
-
-const NEXT_ACTIONS = [
-  { value: "schedule-visit", label: "Schedule Site Visit" },
-  { value: "send-brochure", label: "Send Property Brochure" },
-  { value: "follow-up", label: "Follow Up in 2-3 Days" },
-  { value: "send-payment-plan", label: "Send Payment Plan" },
-  { value: "escalate", label: "Escalate to Manager" },
-  { value: "none", label: "No Action Required" },
-]
-
-const DURATIONS = [
-  { value: "less-1min", label: "Less than 1 minute" },
-  { value: "1-3min", label: "1-3 minutes" },
-  { value: "3-5min", label: "3-5 minutes" },
-  { value: "5-10min", label: "5-10 minutes" },
-  { value: "10plus", label: "More than 10 minutes" },
-]
 
 function CallStatusControl({
   status,
@@ -102,7 +82,15 @@ function CallStatusControl({
   return <Badge variant="secondary">Call Ended</Badge>
 }
 
-function CallLogForm({ lead, onSaved }: { lead: Lead; onSaved: () => void }) {
+function CallLogForm({
+  lead,
+  pending,
+  onSave,
+}: {
+  lead: Lead
+  pending: boolean
+  onSave: (log: CallLogInput) => void
+}) {
   const [status, setStatus] = useState<CallStatus>("not-started")
   const [outcome, setOutcome] = useState("")
   const [sentiment, setSentiment] = useState("")
@@ -118,11 +106,13 @@ function CallLogForm({ lead, onSaved }: { lead: Lead; onSaved: () => void }) {
       setOutcomeError(true)
       return
     }
-    const outcomeLabel = OUTCOMES.find((o) => o.value === outcome)?.label
-    toast.success("Call log saved", {
-      description: `${lead.name}: ${outcomeLabel}`,
+    onSave({
+      outcome: outcome as CallLogInput["outcome"],
+      sentiment: sentiment || undefined,
+      nextAction: nextAction || undefined,
+      duration: duration || undefined,
+      notes: notes.trim() || undefined,
     })
-    onSaved()
   }
 
   const context = [
@@ -178,7 +168,7 @@ function CallLogForm({ lead, onSaved }: { lead: Lead; onSaved: () => void }) {
                 setOutcomeError(false)
               }}
               placeholder="Select outcome"
-              options={OUTCOMES}
+              options={CALL_OUTCOMES}
               invalid={outcomeError}
             />
             {outcomeError && (
@@ -217,7 +207,7 @@ function CallLogForm({ lead, onSaved }: { lead: Lead; onSaved: () => void }) {
                 value={nextAction}
                 onChange={setNextAction}
                 placeholder="Select next step"
-                options={NEXT_ACTIONS}
+                options={CALL_NEXT_ACTIONS}
               />
             </Field>
             <Field>
@@ -227,7 +217,7 @@ function CallLogForm({ lead, onSaved }: { lead: Lead; onSaved: () => void }) {
                 value={duration}
                 onChange={setDuration}
                 placeholder="Select duration"
-                options={DURATIONS}
+                options={CALL_DURATIONS}
               />
             </Field>
           </div>
@@ -249,8 +239,12 @@ function CallLogForm({ lead, onSaved }: { lead: Lead; onSaved: () => void }) {
           <Button variant="outline">Cancel</Button>
         </DialogClose>
         {started ? (
-          <Button onClick={handleSave}>
-            <SaveIcon data-icon="inline-start" />
+          <Button onClick={handleSave} disabled={pending}>
+            {pending ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <SaveIcon data-icon="inline-start" />
+            )}
             Save Call Log
           </Button>
         ) : (
@@ -272,6 +266,15 @@ export function CallLeadDialog({
   onOpenChange: (open: boolean) => void
   lead: Lead | null
 }) {
+  const logCall = useLogLeadCall({
+    mutation: {
+      onSuccess: (activity) => {
+        toast.success("Call log saved", { description: activity.title })
+        onOpenChange(false)
+      },
+    },
+  })
+
   return (
     <Dialog open={open && !!lead} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -285,7 +288,8 @@ export function CallLeadDialog({
           <CallLogForm
             key={lead.id}
             lead={lead}
-            onSaved={() => onOpenChange(false)}
+            pending={logCall.isPending}
+            onSave={(data) => logCall.mutate({ leadId: lead.id, data })}
           />
         )}
       </DialogContent>

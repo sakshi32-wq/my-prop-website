@@ -12,7 +12,7 @@ import { faker } from "@faker-js/faker"
 import { HttpResponse, http } from "msw"
 import type { RequestHandlerOptions } from "msw"
 
-import type { Lead } from "../model"
+import type { Lead, LeadActivity } from "../model"
 
 export const getListLeadsResponseMock = (): Lead[] =>
   Array.from(
@@ -155,6 +155,83 @@ export const getUpdateLeadResponseMock = (
   ...overrideResponse,
 })
 
+export const getListLeadActivitiesResponseMock = (): LeadActivity[] =>
+  Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    id: faker.string.uuid(),
+    leadId: faker.string.uuid(),
+    type: faker.helpers.arrayElement([
+      "captured",
+      "stage-change",
+      "call",
+      "whatsapp",
+      "email",
+      "site-visit",
+    ] as const),
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  }))
+
+export const getLogLeadCallResponseMock = (
+  overrideResponse: Partial<Extract<LeadActivity, object>> = {}
+): LeadActivity => ({
+  id: faker.string.uuid(),
+  leadId: faker.string.uuid(),
+  type: faker.helpers.arrayElement([
+    "captured",
+    "stage-change",
+    "call",
+    "whatsapp",
+    "email",
+    "site-visit",
+  ] as const),
+  title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  ...overrideResponse,
+})
+
+export const getSendLeadMessageResponseMock = (
+  overrideResponse: Partial<Extract<LeadActivity, object>> = {}
+): LeadActivity => ({
+  id: faker.string.uuid(),
+  leadId: faker.string.uuid(),
+  type: faker.helpers.arrayElement([
+    "captured",
+    "stage-change",
+    "call",
+    "whatsapp",
+    "email",
+    "site-visit",
+  ] as const),
+  title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  ...overrideResponse,
+})
+
+export const getScheduleSiteVisitResponseMock = (
+  overrideResponse: Partial<Extract<LeadActivity, object>> = {}
+): LeadActivity => ({
+  id: faker.string.uuid(),
+  leadId: faker.string.uuid(),
+  type: faker.helpers.arrayElement([
+    "captured",
+    "stage-change",
+    "call",
+    "whatsapp",
+    "email",
+    "site-visit",
+  ] as const),
+  title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  ...overrideResponse,
+})
+
 export const getListLeadsMockHandler = (
   overrideResponse?:
     | Lead[]
@@ -271,10 +348,110 @@ export const getDeleteLeadMockHandler = (
     options
   )
 }
+
+export const getListLeadActivitiesMockHandler = (
+  overrideResponse?:
+    | LeadActivity[]
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0]
+      ) => Promise<LeadActivity[]> | LeadActivity[]),
+  options?: RequestHandlerOptions
+) => {
+  return http.get(
+    "/api/leads/:leadId/activities",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getListLeadActivitiesResponseMock(),
+        { status: 200 }
+      )
+    },
+    options
+  )
+}
+
+export const getLogLeadCallMockHandler = (
+  overrideResponse?:
+    | LeadActivity
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0]
+      ) => Promise<LeadActivity> | LeadActivity),
+  options?: RequestHandlerOptions
+) => {
+  return http.post(
+    "/api/leads/:leadId/calls",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getLogLeadCallResponseMock(),
+        { status: 201 }
+      )
+    },
+    options
+  )
+}
+
+export const getSendLeadMessageMockHandler = (
+  overrideResponse?:
+    | LeadActivity
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0]
+      ) => Promise<LeadActivity> | LeadActivity),
+  options?: RequestHandlerOptions
+) => {
+  return http.post(
+    "/api/leads/:leadId/messages",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSendLeadMessageResponseMock(),
+        { status: 201 }
+      )
+    },
+    options
+  )
+}
+
+export const getScheduleSiteVisitMockHandler = (
+  overrideResponse?:
+    | LeadActivity
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0]
+      ) => Promise<LeadActivity> | LeadActivity),
+  options?: RequestHandlerOptions
+) => {
+  return http.post(
+    "/api/leads/:leadId/site-visits",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getScheduleSiteVisitResponseMock(),
+        { status: 201 }
+      )
+    },
+    options
+  )
+}
 export const getLeadsMock = () => [
   getListLeadsMockHandler(),
   getCreateLeadMockHandler(),
   getGetLeadMockHandler(),
   getUpdateLeadMockHandler(),
   getDeleteLeadMockHandler(),
+  getListLeadActivitiesMockHandler(),
+  getLogLeadCallMockHandler(),
+  getSendLeadMessageMockHandler(),
+  getScheduleSiteVisitMockHandler(),
 ]

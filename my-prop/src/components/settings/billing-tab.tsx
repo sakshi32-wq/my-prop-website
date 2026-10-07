@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { format, parseISO } from "date-fns"
 import {
   CreditCardIcon,
   DownloadIcon,
@@ -7,8 +7,18 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { formatInr } from "./billing-data"
 import { ConfirmAction } from "./confirm-action"
 import { downloadTextFile } from "./utils"
+import type { Invoice, Subscription } from "./billing-data"
+import {
+  useCancelSubscription,
+  useGetSubscription,
+  useListInvoices,
+  useRequestPlanUpgrade,
+  useResumeSubscription,
+} from "@/api/generated/billing/billing"
+import { QueryError } from "@/components/query-error"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,6 +39,8 @@ import {
   ItemTitle,
 } from "@/components/ui/item"
 import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
 import {
   Table,
   TableBody,
@@ -38,62 +50,76 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-const PLAN = {
-  name: "Growth Plan",
-  tagline: "Perfect for growing developers",
-  price: "₹14,999",
-  nextBilling: "Mar 15",
-}
-
-const USAGE = [
-  { label: "Websites", used: 8, limit: 15 },
-  { label: "Leads This Month", used: 2847, limit: 5000 },
-]
-
-const INVOICES = [
-  {
-    date: "Feb 15, 2026",
-    amount: "₹14,999",
-    status: "Paid",
-    invoice: "INV-2026-002",
-  },
-  {
-    date: "Jan 15, 2026",
-    amount: "₹14,999",
-    status: "Paid",
-    invoice: "INV-2026-001",
-  },
-  {
-    date: "Dec 15, 2025",
-    amount: "₹14,999",
-    status: "Paid",
-    invoice: "INV-2025-012",
-  },
-]
-
 const formatNumber = (value: number) => value.toLocaleString("en-IN")
+const formatDate = (date: string) => format(parseISO(date), "MMM d, yyyy")
 
-function downloadInvoice(invoice: (typeof INVOICES)[number]) {
+function downloadInvoice(invoice: Invoice, subscription?: Subscription) {
   downloadTextFile(
-    `${invoice.invoice}.txt`,
+    `${invoice.number}.txt`,
     [
       "myprop.live — Invoice",
       "",
-      `Invoice:  ${invoice.invoice}`,
-      `Date:     ${invoice.date}`,
-      `Plan:     ${PLAN.name} (monthly)`,
-      `Amount:   ${invoice.amount}`,
+      `Invoice:  ${invoice.number}`,
+      `Date:     ${formatDate(invoice.issuedAt)}`,
+      `Plan:     ${subscription?.plan.name ?? "Subscription"} (monthly)`,
+      `Amount:   ${formatInr(invoice.amountInr)}`,
       `Status:   ${invoice.status}`,
-      `Paid with card ending 4242`,
+      subscription
+        ? `Paid with card ending ${subscription.paymentMethod.last4}`
+        : "",
       "",
       "Thank you for your business!",
     ].join("\n")
   )
-  toast.success(`${invoice.invoice} downloaded`)
+  toast.success(`${invoice.number} downloaded`)
 }
 
 export function BillingTab() {
-  const [cancelled, setCancelled] = useState(false)
+  const subscriptionQuery = useGetSubscription()
+  const invoicesQuery = useListInvoices()
+  const cancel = useCancelSubscription({
+    mutation: {
+      onSuccess: (subscription) =>
+        toast("Subscription cancelled", {
+          description: `Your plan stays active until ${formatDate(subscription.currentPeriodEnd)}.`,
+        }),
+    },
+  })
+  const resume = useResumeSubscription({
+    mutation: { onSuccess: () => toast.success("Subscription resumed") },
+  })
+  const upgrade = useRequestPlanUpgrade({
+    mutation: {
+      onSuccess: () =>
+        toast.success("Upgrade request received", {
+          description: "Our team will reach out with Scale plan options.",
+        }),
+    },
+  })
+
+  const subscription = subscriptionQuery.data
+  if (!subscription)
+    return subscriptionQuery.isError ? (
+      <QueryError
+        title="Couldn't load your subscription"
+        error={subscriptionQuery.error}
+        onRetry={() => void subscriptionQuery.refetch()}
+      />
+    ) : (
+      <div
+        className="flex flex-col gap-6"
+        aria-busy="true"
+        aria-label="Loading billing"
+      >
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-40 rounded-xl" />
+      </div>
+    )
+
+  const { plan, paymentMethod } = subscription
+  const cancelled = subscription.status === "cancelling"
+  const periodEnd = formatDate(subscription.currentPeriodEnd)
+  const price = formatInr(plan.priceInr)
 
   return (
     <div className="flex flex-col gap-6">
@@ -105,24 +131,24 @@ export function BillingTab() {
           </CardDescription>
           {cancelled && (
             <CardAction>
-              <Badge variant="destructive">Cancels {PLAN.nextBilling}</Badge>
+              <Badge variant="destructive">Cancels {periodEnd}</Badge>
             </CardAction>
           )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-col gap-1">
-              <h3 className="text-xl font-semibold">{PLAN.name}</h3>
-              <p className="text-muted-foreground">{PLAN.tagline}</p>
+              <h3 className="text-xl font-semibold">{plan.name}</h3>
+              <p className="text-muted-foreground">{plan.tagline}</p>
             </div>
             <p className="flex items-baseline gap-1">
-              <span className="text-2xl font-semibold">{PLAN.price}</span>
+              <span className="text-2xl font-semibold">{price}</span>
               <span className="text-muted-foreground">per month</span>
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            {USAGE.map((usage) => (
-              <Item key={usage.label} variant="muted">
+            {subscription.usage.map((usage) => (
+              <Item key={usage.key} variant="muted">
                 <ItemContent className="gap-2">
                   <ItemDescription>{usage.label}</ItemDescription>
                   <ItemTitle className="text-lg">
@@ -140,9 +166,9 @@ export function BillingTab() {
                 <ItemDescription>
                   {cancelled ? "Access Until" : "Next Billing"}
                 </ItemDescription>
-                <ItemTitle className="text-lg">{PLAN.nextBilling}</ItemTitle>
+                <ItemTitle className="text-lg">{periodEnd}</ItemTitle>
                 <ItemDescription>
-                  {cancelled ? "Will not renew" : `${PLAN.price} auto-renews`}
+                  {cancelled ? "Will not renew" : `${price} auto-renews`}
                 </ItemDescription>
               </ItemContent>
             </Item>
@@ -150,38 +176,38 @@ export function BillingTab() {
         </CardContent>
         <CardFooter className="flex-wrap gap-2">
           <Button
-            onClick={() =>
-              toast.success("Upgrade request received", {
-                description: "Our team will reach out with Scale plan options.",
-              })
-            }
+            disabled={upgrade.isPending}
+            onClick={() => upgrade.mutate({ data: { plan: "scale" } })}
           >
-            <SparklesIcon data-icon="inline-start" />
+            {upgrade.isPending ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <SparklesIcon data-icon="inline-start" />
+            )}
             Upgrade Plan
           </Button>
           {cancelled ? (
             <Button
               variant="outline"
-              onClick={() => {
-                setCancelled(false)
-                toast.success("Subscription resumed")
-              }}
+              disabled={resume.isPending}
+              onClick={() => resume.mutate()}
             >
+              {resume.isPending && <Spinner data-icon="inline-start" />}
               Resume Subscription
             </Button>
           ) : (
             <ConfirmAction
               title="Cancel your subscription?"
-              description={`You'll keep ${PLAN.name} features until ${PLAN.nextBilling}. After that your websites will be unpublished and lead capture will stop.`}
+              description={`You'll keep ${plan.name} features until ${periodEnd}. After that your websites will be unpublished and lead capture will stop.`}
               confirmLabel="Cancel Subscription"
               cancelLabel="Keep Plan"
-              onConfirm={() => {
-                setCancelled(true)
-                toast(`Subscription cancelled`, {
-                  description: `Your plan stays active until ${PLAN.nextBilling}.`,
-                })
-              }}
-              trigger={<Button variant="outline">Cancel Subscription</Button>}
+              onConfirm={() => cancel.mutate()}
+              trigger={
+                <Button variant="outline" disabled={cancel.isPending}>
+                  {cancel.isPending && <Spinner data-icon="inline-start" />}
+                  Cancel Subscription
+                </Button>
+              }
             />
           )}
         </CardFooter>
@@ -201,9 +227,13 @@ export function BillingTab() {
             </ItemMedia>
             <ItemContent className="min-w-48">
               <ItemTitle className="font-mono whitespace-nowrap">
-                •••• •••• •••• 4242
+                •••• •••• •••• {paymentMethod.last4}
               </ItemTitle>
-              <ItemDescription>Expires 12/26</ItemDescription>
+              <ItemDescription>
+                {paymentMethod.brand} · Expires{" "}
+                {String(paymentMethod.expMonth).padStart(2, "0")}/
+                {String(paymentMethod.expYear).slice(-2)}
+              </ItemDescription>
             </ItemContent>
             <ItemActions className="ml-auto">
               <Badge>Default</Badge>
@@ -246,43 +276,69 @@ export function BillingTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Invoice</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {INVOICES.map((invoice) => (
-                <TableRow key={invoice.invoice}>
-                  <TableCell className="font-medium">{invoice.date}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {invoice.invoice}
-                  </TableCell>
-                  <TableCell>{invoice.amount}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{invoice.status}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => downloadInvoice(invoice)}
-                    >
-                      <DownloadIcon data-icon="inline-start" />
-                      Download
-                    </Button>
-                  </TableCell>
+          {invoicesQuery.isError ? (
+            <QueryError
+              title="Couldn't load invoices"
+              error={invoicesQuery.error}
+              onRetry={() => void invoicesQuery.refetch()}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {invoicesQuery.isPending && (
+                  <TableRow>
+                    <TableCell colSpan={5}>
+                      <Skeleton className="h-8 w-full" />
+                    </TableCell>
+                  </TableRow>
+                )}
+                {invoicesQuery.data?.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">
+                      {formatDate(invoice.issuedAt)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {invoice.number}
+                    </TableCell>
+                    <TableCell>{formatInr(invoice.amountInr)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          invoice.status === "failed"
+                            ? "destructive"
+                            : "secondary"
+                        }
+                        className="capitalize"
+                      >
+                        {invoice.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => downloadInvoice(invoice, subscription)}
+                      >
+                        <DownloadIcon data-icon="inline-start" />
+                        Download
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

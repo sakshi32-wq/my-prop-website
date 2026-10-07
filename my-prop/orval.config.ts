@@ -32,6 +32,23 @@ export default defineConfig({
               invalidates: [
                 "listLeads",
                 { query: "getLead", params: ["leadId"] },
+                // Stage changes add a timeline entry.
+                { query: "listLeadActivities", params: ["leadId"] },
+              ],
+            },
+            {
+              onMutations: ["logLeadCall", "sendLeadMessage"],
+              invalidates: [
+                { query: "listLeadActivities", params: ["leadId"] },
+              ],
+            },
+            {
+              // The server may also move the lead to the scheduled stage.
+              onMutations: ["scheduleSiteVisit"],
+              invalidates: [
+                "listLeads",
+                { query: "getLead", params: ["leadId"] },
+                { query: "listLeadActivities", params: ["leadId"] },
               ],
             },
             {
@@ -101,11 +118,44 @@ export default defineConfig({
               invalidates: ["getNotificationPreferences"],
             },
             {
+              onMutations: [
+                "markAllNotificationsRead",
+                "updateNotification",
+                "deleteNotification",
+              ],
+              invalidates: ["listNotifications"],
+            },
+            {
+              onMutations: ["createAutomation"],
+              invalidates: ["listAutomations"],
+            },
+            {
+              onMutations: ["cancelSubscription", "resumeSubscription"],
+              invalidates: ["getSubscription"],
+            },
+            {
+              onMutations: ["saveGeneration", "deleteGeneration"],
+              invalidates: ["listGenerations"],
+            },
+            {
+              onMutations: ["saveAutomation", "deleteAutomation"],
+              invalidates: [
+                "listAutomations",
+                { query: "getAutomation", params: ["automationId"] },
+              ],
+            },
+            {
               onMutations: ["saveWebsiteContent"],
               invalidates: [
                 "listWebsites",
                 { query: "getWebsite", params: ["websiteId"] },
                 { query: "getWebsiteContent", params: ["websiteId"] },
+              ],
+            },
+            {
+              onMutations: ["runLighthouseAudit"],
+              invalidates: [
+                { query: "getLatestLighthouseReport", params: ["websiteId"] },
               ],
             },
             {

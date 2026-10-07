@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import {
   CheckIcon,
   Code2Icon,
@@ -15,15 +15,12 @@ import { CopyButton } from "../copy-button"
 import { downloadFile } from "../utils"
 import { ChatPanel } from "./chat-panel"
 import type { ChatMessage } from "./chat-panel"
-import { PAGE_HTML } from "./page-code"
 import { PreviewPanel } from "./preview-panel"
 import type { Device, PreviewView } from "./preview-panel"
+import { useDesignPage } from "@/api/generated/ai/ai"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-
-const REPLY =
-  "I've created that for you. Check the live preview and let me know if you'd like any changes!"
 
 const DEVICES = [
   { value: "desktop", label: "Desktop", icon: MonitorIcon },
@@ -33,21 +30,20 @@ const DEVICES = [
 
 export function WebPageDesigner() {
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
-  const [generating, setGenerating] = useState(false)
   const [device, setDevice] = useState<Device>("desktop")
   const [view, setView] = useState<PreviewView>("preview")
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  // The page's HTML from the latest reply.
+  const [html, setHtml] = useState("")
+  const designPage = useDesignPage({
+    mutation: { meta: { errorToast: false } },
+  })
+  const generating = designPage.isPending
 
-  useEffect(() => () => clearTimeout(timer.current), [])
-
-  const hasPage = messages.some(
-    (message) => message.role === "assistant" && !message.pending
-  )
+  const hasPage = html.length > 0
 
   function handleSend(prompt: string) {
     if (generating) return
     const pendingId = crypto.randomUUID()
-    setGenerating(true)
     setMessages((current) => [
       ...current,
       { id: crypto.randomUUID(), role: "user", content: prompt },
@@ -58,22 +54,32 @@ export function WebPageDesigner() {
         pending: true,
       },
     ])
-    timer.current = setTimeout(() => {
+    const settle = (content: string) =>
       setMessages((current) =>
         current.map((message) =>
           message.id === pendingId
-            ? { ...message, content: REPLY, pending: false }
+            ? { ...message, content, pending: false }
             : message
         )
       )
-      setGenerating(false)
-    }, 2000)
+    designPage.mutate(
+      { data: { prompt } },
+      {
+        onSuccess: (design) => {
+          setHtml(design.html)
+          settle(design.reply)
+        },
+        // Shown in the chat instead of a toast.
+        onError: (error) =>
+          settle(`Sorry, I couldn't design that: ${error.message}`),
+      }
+    )
   }
 
   function startOver() {
-    clearTimeout(timer.current)
+    designPage.reset()
     setMessages([])
-    setGenerating(false)
+    setHtml("")
     setView("preview")
   }
 
@@ -129,7 +135,7 @@ export function WebPageDesigner() {
             size="sm"
             disabled={!hasPage}
             onClick={() => {
-              downloadFile("property-page.html", PAGE_HTML, "text/html")
+              downloadFile("property-page.html", html, "text/html")
               toast.success("Page exported", {
                 description: "property-page.html was downloaded.",
               })
@@ -150,7 +156,7 @@ export function WebPageDesigner() {
           />
         </div>
         <div className="min-w-0">
-          <PreviewPanel device={device} view={view} hasPage={hasPage} />
+          <PreviewPanel device={device} view={view} html={html} />
         </div>
       </div>
 
@@ -164,7 +170,7 @@ export function WebPageDesigner() {
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton
-                text={PAGE_HTML}
+                text={html}
                 label="Copy Code"
                 showLabel
                 variant="outline"

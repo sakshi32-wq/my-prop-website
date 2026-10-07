@@ -1,54 +1,52 @@
-import { useEffect, useRef, useState } from "react"
-import { format } from "date-fns"
+import { useState } from "react"
 import { CheckIcon, RefreshCwIcon, RotateCcwIcon, SaveIcon } from "lucide-react"
 import { toast } from "sonner"
 
-import { generationTitle, toPlainText } from "./content"
 import { EMPTY_FORM } from "./data"
-import type { ContentFormData, ContentToolId, Generation } from "./data"
+import type { ContentFormData, ContentToolId } from "./data"
 import { ContentForm } from "./content-form"
 import { GeneratedOutput, GeneratedOutputSkeleton } from "./generated-output"
+import { useGenerateContent, useSaveGeneration } from "@/api/generated/ai/ai"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
-
-const GENERATION_DELAY = 2000
 
 export function ContentTool({
   tool,
   data,
   onDataChange,
-  onSaveDraft,
 }: {
   tool: ContentToolId
   data: ContentFormData
   onDataChange: (data: ContentFormData) => void
-  onSaveDraft: (generation: Generation) => void
 }) {
-  const [generating, setGenerating] = useState(false)
-  // Snapshot of the form at the moment Generate was pressed.
-  const [result, setResult] = useState<ContentFormData | null>(null)
   const [formKey, setFormKey] = useState(0)
-  const [savedVersion, setSavedVersion] = useState<number | null>(null)
+  // Bumped per result, so the output remounts (tabs, open FAQs) each time.
   const [version, setVersion] = useState(0)
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const [savedVersion, setSavedVersion] = useState<number | null>(null)
+  const generateContent = useGenerateContent({
+    mutation: { onSuccess: () => setVersion((v) => v + 1) },
+  })
+  const saveGeneration = useSaveGeneration({
+    mutation: {
+      onSuccess: () => {
+        setSavedVersion(version)
+        toast.success("Saved to drafts", {
+          description: "You can find it under Recent Generations.",
+        })
+      },
+    },
+  })
+  const generating = generateContent.isPending
+  // The response, which also holds the form input it was generated from.
+  const result = generating ? null : (generateContent.data ?? null)
 
-  useEffect(() => () => clearTimeout(timer.current), [])
-
-  function generate(snapshot: ContentFormData) {
-    clearTimeout(timer.current)
-    setGenerating(true)
-    timer.current = setTimeout(() => {
-      setResult(snapshot)
-      setVersion((v) => v + 1)
-      setGenerating(false)
-    }, GENERATION_DELAY)
+  function generate(input: ContentFormData) {
+    generateContent.mutate({ data: { tool, input } })
   }
 
   function startOver() {
-    clearTimeout(timer.current)
-    setGenerating(false)
-    setResult(null)
+    generateContent.reset()
     onDataChange(EMPTY_FORM)
     setFormKey((k) => k + 1)
   }
@@ -59,22 +57,14 @@ export function ContentTool({
       toast("Already saved", { description: "This version is in your drafts." })
       return
     }
-    const content = toPlainText(tool, result)
-    onSaveDraft({
-      id: crypto.randomUUID(),
-      title: generationTitle(tool, result.projectName),
-      type: tool,
-      projectName: result.projectName,
-      location: result.location,
-      timestamp: "Just now",
-      date: format(new Date(), "MMM d, yyyy - h:mm a"),
-      preview: content.slice(0, 160),
-      content,
-      status: "draft",
-    })
-    setSavedVersion(version)
-    toast.success("Saved to drafts", {
-      description: "You can find it under Recent Generations.",
+    saveGeneration.mutate({
+      data: {
+        type: tool,
+        title: result.title,
+        projectName: result.input.projectName,
+        location: result.input.location,
+        content: result.plainText,
+      },
     })
   }
 
@@ -117,7 +107,7 @@ export function ContentTool({
                     variant="outline"
                     size="sm"
                     disabled={generating}
-                    onClick={() => generate(result)}
+                    onClick={() => generate(result.input)}
                   >
                     <RefreshCwIcon data-icon="inline-start" />
                     Regenerate
@@ -129,7 +119,7 @@ export function ContentTool({
             {generating || !result ? (
               <GeneratedOutputSkeleton />
             ) : (
-              <GeneratedOutput key={version} tool={tool} data={result} />
+              <GeneratedOutput key={version} generation={result} />
             )}
 
             {result && !generating && (
@@ -146,7 +136,7 @@ export function ContentTool({
                         {
                           description:
                             tool === "copy"
-                              ? `${result.projectName}'s website sections were updated.`
+                              ? `${result.input.projectName}'s website sections were updated.`
                               : "We've added it to your campaign assets.",
                         }
                       )
@@ -158,9 +148,14 @@ export function ContentTool({
                   <Button
                     variant="outline"
                     className="sm:flex-1"
+                    disabled={saveGeneration.isPending}
                     onClick={saveDraft}
                   >
-                    <SaveIcon data-icon="inline-start" />
+                    {saveGeneration.isPending ? (
+                      <Spinner data-icon="inline-start" />
+                    ) : (
+                      <SaveIcon data-icon="inline-start" />
+                    )}
                     Save to Drafts
                   </Button>
                 </div>

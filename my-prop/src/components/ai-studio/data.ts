@@ -1,3 +1,4 @@
+import { subDays, subHours } from "date-fns"
 import {
   Code2Icon,
   FileTextIcon,
@@ -8,11 +9,17 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-export type ToolId =
-  "webpage" | "website" | "copy" | "whatsapp" | "social" | "faq"
+import type {
+  AiContentInput,
+  AiContentTool,
+  AiToolType,
+  SavedGeneration,
+} from "@/api/generated/model"
+
+export type ToolId = AiToolType
 
 /** Tools that use the shared content form and produce text output. */
-export type ContentToolId = "copy" | "whatsapp" | "social" | "faq"
+export type ContentToolId = AiContentTool
 
 export type AiTool = {
   id: ToolId
@@ -84,17 +91,7 @@ export const CAMPAIGN_GOALS = [
   { value: "followup", label: "Lead Follow-up" },
 ] as const
 
-export type ContentFormData = {
-  projectName: string
-  location: string
-  propertyType: string
-  tone: string
-  features: string
-  targetAudience: string
-  platform: string
-  numPosts: string
-  campaignGoal: string
-}
+export type ContentFormData = AiContentInput
 
 export const EMPTY_FORM: ContentFormData = {
   projectName: "",
@@ -108,103 +105,91 @@ export const EMPTY_FORM: ContentFormData = {
   campaignGoal: "",
 }
 
-export type Generation = {
-  id: string
-  title: string
-  type: ToolId
-  projectName: string
-  location: string
-  timestamp: string
-  date: string
-  preview: string
-  /** Full text of the generation. Falls back to `preview` when missing. */
-  content?: string
-  status: "completed" | "draft"
-}
+export type Generation = SavedGeneration
 
-export const INITIAL_GENERATIONS: Array<Generation> = [
+const now = new Date()
+
+const SEED_GENERATIONS: Array<Omit<Generation, "content">> = [
   {
-    id: "1",
+    id: "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b01",
     title: "Skyline Heights Copy",
     type: "copy",
     projectName: "Skyline Heights",
     location: "Andheri West, Mumbai",
-    timestamp: "2 hours ago",
-    date: "Feb 20, 2026 - 2:30 PM",
+    createdAt: subHours(now, 2).toISOString(),
     preview:
       "Welcome to Skyline Heights - Where Luxury Meets Comfort in the Heart of Andheri West, Mumbai",
     status: "completed",
   },
   {
-    id: "2",
+    id: "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b02",
     title: "WhatsApp Campaign - Marina Bay",
     type: "whatsapp",
     projectName: "Marina Bay",
     location: "Worli, Mumbai",
-    timestamp: "5 hours ago",
-    date: "Feb 20, 2026 - 11:00 AM",
+    createdAt: subHours(now, 5).toISOString(),
     preview:
       "Hi {name}! 👋 Exciting news! We're launching Marina Bay in Worli, Mumbai...",
     status: "completed",
   },
   {
-    id: "3",
+    id: "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b03",
     title: "FAQ Generation - Green Valley",
     type: "faq",
     projectName: "Green Valley",
     location: "Thane, Mumbai",
-    timestamp: "1 day ago",
-    date: "Feb 19, 2026 - 4:15 PM",
+    createdAt: subDays(now, 1).toISOString(),
     preview:
       "What is Green Valley? Green Valley is a premium apartment development...",
     status: "completed",
   },
   {
-    id: "4",
+    id: "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b04",
     title: "Social Media Posts - Ocean View",
     type: "social",
     projectName: "Ocean View Residency",
     location: "Bandra West, Mumbai",
-    timestamp: "2 days ago",
-    date: "Feb 18, 2026 - 10:00 AM",
+    createdAt: subDays(now, 2).toISOString(),
     preview:
       "🏡 Introducing Ocean View Residency! ✨ Discover luxury living in Bandra West...",
     status: "completed",
   },
   {
-    id: "5",
+    id: "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b05",
     title: "Property Copy - Royal Gardens",
     type: "copy",
     projectName: "Royal Gardens",
     location: "Powai, Mumbai",
-    timestamp: "3 days ago",
-    date: "Feb 17, 2026 - 3:45 PM",
+    createdAt: subDays(now, 3).toISOString(),
     preview:
       "Experience premium living at Royal Gardens, Powai's newest landmark...",
     status: "completed",
   },
   {
-    id: "6",
+    id: "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b06",
     title: "WhatsApp Campaign - Sunset Heights",
     type: "whatsapp",
     projectName: "Sunset Heights",
     location: "Goregaon East, Mumbai",
-    timestamp: "5 days ago",
-    date: "Feb 15, 2026 - 1:20 PM",
+    createdAt: subDays(now, 5).toISOString(),
     preview:
       "Hi {name}! We have an exclusive limited-time offer on Sunset Heights!",
     status: "completed",
   },
   {
-    id: "7",
+    id: "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b07",
     title: "FAQ - Emerald Towers",
     type: "faq",
     projectName: "Emerald Towers",
     location: "Kandivali West, Mumbai",
-    timestamp: "1 week ago",
-    date: "Feb 13, 2026 - 9:30 AM",
+    createdAt: subDays(now, 7).toISOString(),
     preview:
       "What is Emerald Towers? Emerald Towers is a premium villa development...",
     status: "completed",
   },
 ]
+
+/** Seed data for the mock API (src/mocks/db.ts). */
+export const DEMO_GENERATIONS: Array<Generation> = SEED_GENERATIONS.map(
+  (generation) => ({ ...generation, content: generation.preview })
+)

@@ -1,7 +1,6 @@
 import { Code2Icon, EyeIcon, Maximize2Icon } from "lucide-react"
 
 import { MockPage } from "./mock-page"
-import { PAGE_HTML } from "./page-code"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -31,12 +30,14 @@ const FRAME_WIDTH: Record<Device, string> = {
 export function PreviewPanel({
   device,
   view,
-  hasPage,
+  html,
 }: {
   device: Device
   view: PreviewView
-  hasPage: boolean
+  /** The page's HTML; empty until a design has been generated. */
+  html: string
 }) {
+  const hasPage = html.length > 0
   return (
     <Card size="sm" className="h-[32rem] lg:h-[36rem]">
       <CardHeader className="border-b">
@@ -76,7 +77,7 @@ export function PreviewPanel({
           </Empty>
         ) : view === "code" ? (
           <pre className="h-full overflow-auto rounded-lg bg-muted p-4 font-mono text-xs leading-relaxed">
-            <code>{PAGE_HTML}</code>
+            <code>{html}</code>
           </pre>
         ) : (
           <div className="h-full overflow-auto rounded-lg bg-muted p-2 sm:p-4">

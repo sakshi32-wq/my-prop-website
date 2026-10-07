@@ -10,24 +10,40 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-export type Impact = "high" | "medium" | "low"
+import type {
+  LighthouseIssue,
+  LighthouseReport,
+  LighthouseReportBestPracticesPassedItemKey,
+  LighthouseReportScores,
+} from "@/api/generated/model"
 
-export type Issue = {
-  title: string
-  description: string
-  impact: Impact
-  element?: string
+export type { LighthouseReport } from "@/api/generated/model"
+export type Issue = LighthouseIssue
+export type Impact = LighthouseIssue["impact"]
+
+/** The four headline scores, in display order. */
+export const SCORE_ITEMS: Array<{
+  key: keyof LighthouseReportScores
+  label: string
+  icon: LucideIcon
+}> = [
+  { key: "performance", label: "Performance", icon: ZapIcon },
+  { key: "accessibility", label: "Accessibility", icon: AccessibilityIcon },
+  { key: "bestPractices", label: "Best Practices", icon: CircleCheckIcon },
+  { key: "seo", label: "SEO", icon: SearchIcon },
+]
+
+export const BEST_PRACTICE_ICONS: Record<
+  LighthouseReportBestPracticesPassedItemKey,
+  LucideIcon
+> = {
+  https: CodeIcon,
+  console: ShieldIcon,
+  "aspect-ratio": ImageIcon,
+  "image-size": FileTextIcon,
 }
 
-export const SCORES: Array<{ label: string; score: number; icon: LucideIcon }> =
-  [
-    { label: "Performance", score: 92, icon: ZapIcon },
-    { label: "Accessibility", score: 88, icon: AccessibilityIcon },
-    { label: "Best Practices", score: 95, icon: CircleCheckIcon },
-    { label: "SEO", score: 100, icon: SearchIcon },
-  ]
-
-export const PERFORMANCE_METRICS = [
+const PERFORMANCE_METRICS = [
   {
     name: "First Contentful Paint",
     value: "1.2s",
@@ -60,7 +76,7 @@ export const PERFORMANCE_METRICS = [
   },
 ]
 
-export const PERFORMANCE_OPPORTUNITIES: Array<Issue> = [
+const PERFORMANCE_OPPORTUNITIES: Array<Issue> = [
   {
     title: "Reduce unused JavaScript",
     description:
@@ -84,7 +100,7 @@ export const PERFORMANCE_OPPORTUNITIES: Array<Issue> = [
   },
 ]
 
-export const ACCESSIBILITY_ISSUES: Array<Issue> = [
+const ACCESSIBILITY_ISSUES: Array<Issue> = [
   {
     title: "Image elements have [alt] attributes",
     description:
@@ -101,14 +117,14 @@ export const ACCESSIBILITY_ISSUES: Array<Issue> = [
   },
 ]
 
-export const ACCESSIBILITY_PASSED = [
+const ACCESSIBILITY_PASSED = [
   "Document has a valid lang attribute",
   "Form elements have associated labels",
   "Links have a discernible name",
   "[aria-*] attributes are valid",
 ]
 
-export const SEO_PASSED = [
+const SEO_PASSED = [
   {
     title: "Document has a meta description",
     description:
@@ -133,10 +149,39 @@ export const SEO_PASSED = [
   },
 ]
 
-export const BEST_PRACTICES_PASSED: Array<{ label: string; icon: LucideIcon }> =
-  [
-    { label: "Uses HTTPS", icon: CodeIcon },
-    { label: "No browser errors in console", icon: ShieldIcon },
-    { label: "Images displayed with correct aspect ratio", icon: ImageIcon },
-    { label: "Properly sized images", icon: FileTextIcon },
-  ]
+/**
+ * The report the mock API returns (src/mocks/handlers/websites.ts). The
+ * performance score varies a little per website so reports differ.
+ */
+export function demoLighthouseReport(websiteId: string): LighthouseReport {
+  const wobble = parseInt(websiteId.slice(0, 2), 16) % 7
+  return {
+    id: crypto.randomUUID(),
+    websiteId,
+    ranAt: new Date().toISOString(),
+    scores: {
+      performance: 92 - wobble,
+      accessibility: 88,
+      bestPractices: 95,
+      seo: 100,
+    },
+    metrics: PERFORMANCE_METRICS,
+    opportunities: PERFORMANCE_OPPORTUNITIES,
+    accessibilityIssues: ACCESSIBILITY_ISSUES,
+    accessibilityPassed: ACCESSIBILITY_PASSED,
+    seoPassed: SEO_PASSED,
+    mobileFriendly: true,
+    structuredDataValid: true,
+    bestPracticesPassed: [
+      { key: "https", label: "Uses HTTPS" },
+      { key: "console", label: "No browser errors in console" },
+      {
+        key: "aspect-ratio",
+        label: "Images displayed with correct aspect ratio",
+      },
+      { key: "image-size", label: "Properly sized images" },
+    ],
+    recommendation:
+      "Consider implementing a Content Security Policy to prevent cross-site scripting attacks.",
+  }
+}

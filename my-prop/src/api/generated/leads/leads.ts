@@ -30,11 +30,15 @@ import type {
 } from "@tanstack/react-query"
 
 import type {
+  CallLogInput,
   Lead,
+  LeadActivity,
   LeadInput,
+  LeadMessageInput,
   LeadUpdate,
   ListLeadsParams,
   NotFoundResponse,
+  SiteVisitInput,
   UnauthorizedResponse,
   UnprocessableEntityResponse,
 } from "../model"
@@ -613,9 +617,11 @@ export const getUpdateLeadMutationOptions = <
     if (!options?.skipInvalidation) {
       queryClient.invalidateQueries({
         predicate: (query) =>
-          [getListLeadsQueryKey(), getGetLeadQueryKey(variables.leadId)].some(
-            (queryKey) => matchQuery({ queryKey }, query)
-          ),
+          [
+            getListLeadsQueryKey(),
+            getGetLeadQueryKey(variables.leadId),
+            getListLeadActivitiesQueryKey(variables.leadId),
+          ].some((queryKey) => matchQuery({ queryKey }, query)),
       })
     }
     mutationOptions?.onSuccess?.(data, variables, onMutateResult, context)
@@ -732,9 +738,11 @@ export const getDeleteLeadMutationOptions = <
     if (!options?.skipInvalidation) {
       queryClient.invalidateQueries({
         predicate: (query) =>
-          [getListLeadsQueryKey(), getGetLeadQueryKey(variables.leadId)].some(
-            (queryKey) => matchQuery({ queryKey }, query)
-          ),
+          [
+            getListLeadsQueryKey(),
+            getGetLeadQueryKey(variables.leadId),
+            getListLeadActivitiesQueryKey(variables.leadId),
+          ].some((queryKey) => matchQuery({ queryKey }, query)),
       })
     }
     mutationOptions?.onSuccess?.(data, variables, onMutateResult, context)
@@ -779,6 +787,633 @@ export const useDeleteLead = <
   const backupQueryClient = useQueryClient()
   return useMutation(
     getDeleteLeadMutationOptions(queryClient ?? backupQueryClient, options),
+    queryClient
+  )
+}
+export const getListLeadActivitiesUrl = (leadId: string) => {
+  return `/leads/${leadId}/activities`
+}
+
+/**
+ * @summary A lead's activity timeline, newest first
+ */
+export const listLeadActivities = async (
+  leadId: string,
+  options?: Parameters<typeof customFetch>[1]
+): Promise<LeadActivity[]> => {
+  return customFetch<LeadActivity[]>(getListLeadActivitiesUrl(leadId), {
+    ...options,
+    method: "GET",
+  })
+}
+
+export const getListLeadActivitiesQueryKey = (leadId: string) => {
+  return [`/leads/${leadId}/activities`] as const
+}
+
+export const getListLeadActivitiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLeadActivities>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  leadId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listLeadActivities>>,
+        TError,
+        TData
+      >
+    >
+    request?: SecondParameter<typeof customFetch>
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListLeadActivitiesQueryKey(leadId)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listLeadActivities>>
+  > = ({ signal }) => listLeadActivities(leadId, { signal, ...requestOptions })
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: leadId !== null && leadId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLeadActivities>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListLeadActivitiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLeadActivities>>
+>
+export type ListLeadActivitiesQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>
+
+export function useListLeadActivities<
+  TData = Awaited<ReturnType<typeof listLeadActivities>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  leadId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listLeadActivities>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listLeadActivities>>,
+          TError,
+          Awaited<ReturnType<typeof listLeadActivities>>
+        >,
+        "initialData"
+      >
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListLeadActivities<
+  TData = Awaited<ReturnType<typeof listLeadActivities>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  leadId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listLeadActivities>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listLeadActivities>>,
+          TError,
+          Awaited<ReturnType<typeof listLeadActivities>>
+        >,
+        "initialData"
+      >
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListLeadActivities<
+  TData = Awaited<ReturnType<typeof listLeadActivities>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  leadId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listLeadActivities>>,
+        TError,
+        TData
+      >
+    >
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary A lead's activity timeline, newest first
+ */
+
+export function useListLeadActivities<
+  TData = Awaited<ReturnType<typeof listLeadActivities>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  leadId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listLeadActivities>>,
+        TError,
+        TData
+      >
+    >
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListLeadActivitiesQueryOptions(leadId, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const getLogLeadCallUrl = (leadId: string) => {
+  return `/leads/${leadId}/calls`
+}
+
+/**
+ * @summary Log a call with the lead
+ */
+export const logLeadCall = async (
+  leadId: string,
+  callLogInput: CallLogInput,
+  options?: Parameters<typeof customFetch>[1]
+): Promise<LeadActivity> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {}
+    if (h instanceof Headers) return Object.fromEntries(h.entries())
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string]
+        )
+      )
+    }
+    const headers: Record<string, string | readonly string[]> = {}
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value
+    }
+    return headers
+  }
+  return customFetch<LeadActivity>(getLogLeadCallUrl(leadId), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(callLogInput),
+  })
+}
+
+export const getLogLeadCallMutationKey = () => ["logLeadCall"] as const
+
+export const getLogLeadCallMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+  >,
+  TContext = unknown,
+>(
+  queryClient: QueryClient,
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof logLeadCall>>,
+      TError,
+      LogLeadCallMutationVariables,
+      TContext
+    >
+    skipInvalidation?: boolean
+    request?: SecondParameter<typeof customFetch>
+  }
+): UseMutationOptions<
+  Awaited<ReturnType<typeof logLeadCall>>,
+  TError,
+  LogLeadCallMutationVariables,
+  TContext
+> => {
+  const mutationKey = getLogLeadCallMutationKey()
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof logLeadCall>>,
+    LogLeadCallMutationVariables
+  > = (props) => {
+    const { leadId, data } = props ?? {}
+
+    return logLeadCall(leadId, data, requestOptions)
+  }
+
+  const onSuccess = (
+    data: Awaited<ReturnType<typeof logLeadCall>>,
+    variables: LogLeadCallMutationVariables,
+    onMutateResult: TContext,
+    context: MutationFunctionContext
+  ) => {
+    if (!options?.skipInvalidation) {
+      queryClient.invalidateQueries({
+        queryKey: getListLeadActivitiesQueryKey(variables.leadId),
+      })
+    }
+    mutationOptions?.onSuccess?.(data, variables, onMutateResult, context)
+  }
+
+  return { ...mutationOptions, mutationFn, onSuccess }
+}
+
+export type LogLeadCallMutationResult = NonNullable<
+  Awaited<ReturnType<typeof logLeadCall>>
+>
+export type LogLeadCallMutationBody = CallLogInput
+export type LogLeadCallMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+>
+export type LogLeadCallMutationVariables = {
+  leadId: string
+  data: CallLogInput
+}
+
+/**
+ * @summary Log a call with the lead
+ */
+export const useLogLeadCall = <
+  TError = ErrorType<
+    UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+  >,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof logLeadCall>>,
+      TError,
+      LogLeadCallMutationVariables,
+      TContext
+    >
+    skipInvalidation?: boolean
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof logLeadCall>>,
+  TError,
+  LogLeadCallMutationVariables,
+  TContext
+> => {
+  const backupQueryClient = useQueryClient()
+  return useMutation(
+    getLogLeadCallMutationOptions(queryClient ?? backupQueryClient, options),
+    queryClient
+  )
+}
+export const getSendLeadMessageUrl = (leadId: string) => {
+  return `/leads/${leadId}/messages`
+}
+
+/**
+ * @summary Record a message sent to the lead
+ */
+export const sendLeadMessage = async (
+  leadId: string,
+  leadMessageInput: LeadMessageInput,
+  options?: Parameters<typeof customFetch>[1]
+): Promise<LeadActivity> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {}
+    if (h instanceof Headers) return Object.fromEntries(h.entries())
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string]
+        )
+      )
+    }
+    const headers: Record<string, string | readonly string[]> = {}
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value
+    }
+    return headers
+  }
+  return customFetch<LeadActivity>(getSendLeadMessageUrl(leadId), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(leadMessageInput),
+  })
+}
+
+export const getSendLeadMessageMutationKey = () => ["sendLeadMessage"] as const
+
+export const getSendLeadMessageMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+  >,
+  TContext = unknown,
+>(
+  queryClient: QueryClient,
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof sendLeadMessage>>,
+      TError,
+      SendLeadMessageMutationVariables,
+      TContext
+    >
+    skipInvalidation?: boolean
+    request?: SecondParameter<typeof customFetch>
+  }
+): UseMutationOptions<
+  Awaited<ReturnType<typeof sendLeadMessage>>,
+  TError,
+  SendLeadMessageMutationVariables,
+  TContext
+> => {
+  const mutationKey = getSendLeadMessageMutationKey()
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendLeadMessage>>,
+    SendLeadMessageMutationVariables
+  > = (props) => {
+    const { leadId, data } = props ?? {}
+
+    return sendLeadMessage(leadId, data, requestOptions)
+  }
+
+  const onSuccess = (
+    data: Awaited<ReturnType<typeof sendLeadMessage>>,
+    variables: SendLeadMessageMutationVariables,
+    onMutateResult: TContext,
+    context: MutationFunctionContext
+  ) => {
+    if (!options?.skipInvalidation) {
+      queryClient.invalidateQueries({
+        queryKey: getListLeadActivitiesQueryKey(variables.leadId),
+      })
+    }
+    mutationOptions?.onSuccess?.(data, variables, onMutateResult, context)
+  }
+
+  return { ...mutationOptions, mutationFn, onSuccess }
+}
+
+export type SendLeadMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendLeadMessage>>
+>
+export type SendLeadMessageMutationBody = LeadMessageInput
+export type SendLeadMessageMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+>
+export type SendLeadMessageMutationVariables = {
+  leadId: string
+  data: LeadMessageInput
+}
+
+/**
+ * @summary Record a message sent to the lead
+ */
+export const useSendLeadMessage = <
+  TError = ErrorType<
+    UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+  >,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof sendLeadMessage>>,
+      TError,
+      SendLeadMessageMutationVariables,
+      TContext
+    >
+    skipInvalidation?: boolean
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof sendLeadMessage>>,
+  TError,
+  SendLeadMessageMutationVariables,
+  TContext
+> => {
+  const backupQueryClient = useQueryClient()
+  return useMutation(
+    getSendLeadMessageMutationOptions(
+      queryClient ?? backupQueryClient,
+      options
+    ),
+    queryClient
+  )
+}
+export const getScheduleSiteVisitUrl = (leadId: string) => {
+  return `/leads/${leadId}/site-visits`
+}
+
+/**
+ * @summary Schedule a site visit. Early-stage leads move to the scheduled stage.
+ */
+export const scheduleSiteVisit = async (
+  leadId: string,
+  siteVisitInput: SiteVisitInput,
+  options?: Parameters<typeof customFetch>[1]
+): Promise<LeadActivity> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {}
+    if (h instanceof Headers) return Object.fromEntries(h.entries())
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string]
+        )
+      )
+    }
+    const headers: Record<string, string | readonly string[]> = {}
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value
+    }
+    return headers
+  }
+  return customFetch<LeadActivity>(getScheduleSiteVisitUrl(leadId), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(siteVisitInput),
+  })
+}
+
+export const getScheduleSiteVisitMutationKey = () =>
+  ["scheduleSiteVisit"] as const
+
+export const getScheduleSiteVisitMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+  >,
+  TContext = unknown,
+>(
+  queryClient: QueryClient,
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof scheduleSiteVisit>>,
+      TError,
+      ScheduleSiteVisitMutationVariables,
+      TContext
+    >
+    skipInvalidation?: boolean
+    request?: SecondParameter<typeof customFetch>
+  }
+): UseMutationOptions<
+  Awaited<ReturnType<typeof scheduleSiteVisit>>,
+  TError,
+  ScheduleSiteVisitMutationVariables,
+  TContext
+> => {
+  const mutationKey = getScheduleSiteVisitMutationKey()
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof scheduleSiteVisit>>,
+    ScheduleSiteVisitMutationVariables
+  > = (props) => {
+    const { leadId, data } = props ?? {}
+
+    return scheduleSiteVisit(leadId, data, requestOptions)
+  }
+
+  const onSuccess = (
+    data: Awaited<ReturnType<typeof scheduleSiteVisit>>,
+    variables: ScheduleSiteVisitMutationVariables,
+    onMutateResult: TContext,
+    context: MutationFunctionContext
+  ) => {
+    if (!options?.skipInvalidation) {
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          [
+            getListLeadsQueryKey(),
+            getGetLeadQueryKey(variables.leadId),
+            getListLeadActivitiesQueryKey(variables.leadId),
+          ].some((queryKey) => matchQuery({ queryKey }, query)),
+      })
+    }
+    mutationOptions?.onSuccess?.(data, variables, onMutateResult, context)
+  }
+
+  return { ...mutationOptions, mutationFn, onSuccess }
+}
+
+export type ScheduleSiteVisitMutationResult = NonNullable<
+  Awaited<ReturnType<typeof scheduleSiteVisit>>
+>
+export type ScheduleSiteVisitMutationBody = SiteVisitInput
+export type ScheduleSiteVisitMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+>
+export type ScheduleSiteVisitMutationVariables = {
+  leadId: string
+  data: SiteVisitInput
+}
+
+/**
+ * @summary Schedule a site visit. Early-stage leads move to the scheduled stage.
+ */
+export const useScheduleSiteVisit = <
+  TError = ErrorType<
+    UnauthorizedResponse | NotFoundResponse | UnprocessableEntityResponse
+  >,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof scheduleSiteVisit>>,
+      TError,
+      ScheduleSiteVisitMutationVariables,
+      TContext
+    >
+    skipInvalidation?: boolean
+    request?: SecondParameter<typeof customFetch>
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof scheduleSiteVisit>>,
+  TError,
+  ScheduleSiteVisitMutationVariables,
+  TContext
+> => {
+  const backupQueryClient = useQueryClient()
+  return useMutation(
+    getScheduleSiteVisitMutationOptions(
+      queryClient ?? backupQueryClient,
+      options
+    ),
     queryClient
   )
 }

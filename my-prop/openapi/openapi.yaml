@@ -30,6 +30,16 @@ tags:
     description: The signed-in user's profile, preferences and password
   - name: analytics
     description: Read-only reporting for the dashboard and analytics pages
+  - name: notifications
+    description: In-app notifications shown under the header's bell
+  - name: automations
+    description: Lead follow-up automations (a trigger plus ordered steps)
+  - name: ai
+    description: AI Studio content generation, page design and history
+  - name: billing
+    description: Subscription, usage and invoices
+  - name: auth
+    description: Sign in, sign up, password reset and sign out
 
 paths:
   /leads:
@@ -979,6 +989,561 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications, newest first
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark every notification as read
+      responses:
+        "204":
+          description: Done
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notifications/{notificationId}:
+    parameters:
+      - $ref: "#/components/parameters/NotificationId"
+    patch:
+      operationId: updateNotification
+      tags: [notifications]
+      summary: Mark a notification read or unread
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationUpdate"
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      operationId: deleteNotification
+      tags: [notifications]
+      summary: Delete a notification
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leads/{leadId}/activities:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    get:
+      operationId: listLeadActivities
+      tags: [leads]
+      summary: A lead's activity timeline, newest first
+      responses:
+        "200":
+          description: Activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeadActivity"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leads/{leadId}/calls:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    post:
+      operationId: logLeadCall
+      tags: [leads]
+      summary: Log a call with the lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CallLogInput"
+      responses:
+        "201":
+          description: The call activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadActivity"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /leads/{leadId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    post:
+      operationId: sendLeadMessage
+      tags: [leads]
+      summary: Record a message sent to the lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadMessageInput"
+      responses:
+        "201":
+          description: The message activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadActivity"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /leads/{leadId}/site-visits:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    post:
+      operationId: scheduleSiteVisit
+      tags: [leads]
+      summary: Schedule a site visit. Early-stage leads move to the scheduled stage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteVisitInput"
+      responses:
+        "201":
+          description: The site visit activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadActivity"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /automations:
+    get:
+      operationId: listAutomations
+      tags: [automations]
+      summary: List automations, oldest first
+      responses:
+        "200":
+          description: Automations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Automation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createAutomation
+      tags: [automations]
+      summary: Create an automation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutomationInput"
+      responses:
+        "201":
+          description: The new automation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Automation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /automations/{automationId}:
+    parameters:
+      - $ref: "#/components/parameters/AutomationId"
+    get:
+      operationId: getAutomation
+      tags: [automations]
+      summary: Get an automation
+      responses:
+        "200":
+          description: The automation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Automation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: saveAutomation
+      tags: [automations]
+      summary: Replace an automation's name and steps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutomationInput"
+      responses:
+        "200":
+          description: The saved automation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Automation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      operationId: deleteAutomation
+      tags: [automations]
+      summary: Delete an automation
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /ai/generate:
+    post:
+      operationId: generateContent
+      tags: [ai]
+      summary: Generate marketing content for a property
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiGenerateInput"
+      responses:
+        "200":
+          description: The generated content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiGeneration"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /ai/page-design:
+    post:
+      operationId: designPage
+      tags: [ai]
+      summary: Design a landing page from a chat prompt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiPageDesignInput"
+      responses:
+        "200":
+          description: The assistant's reply and the page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiPageDesign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /ai/generations:
+    get:
+      operationId: listGenerations
+      tags: [ai]
+      summary: Saved generations (history), newest first
+      responses:
+        "200":
+          description: Generations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavedGeneration"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: saveGeneration
+      tags: [ai]
+      summary: Save a generation as a draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedGenerationInput"
+      responses:
+        "201":
+          description: The saved draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedGeneration"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /ai/generations/{generationId}:
+    parameters:
+      - $ref: "#/components/parameters/GenerationId"
+    delete:
+      operationId: deleteGeneration
+      tags: [ai]
+      summary: Delete a saved generation
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /websites/{websiteId}/lighthouse:
+    parameters:
+      - $ref: "#/components/parameters/WebsiteId"
+    get:
+      operationId: getLatestLighthouseReport
+      tags: [websites]
+      summary: The website's most recent Lighthouse report (404 if never run)
+      responses:
+        "200":
+          description: The latest report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LighthouseReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: runLighthouseAudit
+      tags: [websites]
+      summary: Run a Lighthouse audit now and return its report
+      responses:
+        "201":
+          description: The new report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LighthouseReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /billing/subscription:
+    get:
+      operationId: getSubscription
+      tags: [billing]
+      summary: The workspace's plan, usage and payment method
+      responses:
+        "200":
+          description: Subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /billing/subscription/cancel:
+    post:
+      operationId: cancelSubscription
+      tags: [billing]
+      summary: Cancel at the end of the current period
+      responses:
+        "200":
+          description: The cancelling subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /billing/subscription/resume:
+    post:
+      operationId: resumeSubscription
+      tags: [billing]
+      summary: Undo a pending cancellation
+      responses:
+        "200":
+          description: The active subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /billing/upgrade-requests:
+    post:
+      operationId: requestPlanUpgrade
+      tags: [billing]
+      summary: Ask the sales team for a bigger plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan:
+                  type: string
+                  enum: [scale, enterprise]
+      responses:
+        "204":
+          description: Request received
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /billing/invoices:
+    get:
+      operationId: listInvoices
+      tags: [billing]
+      summary: Past invoices, newest first
+      responses:
+        "200":
+          description: Invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: The new session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Create an account and sign in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: The new session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /auth/forgot-password:
+    post:
+      operationId: requestPasswordReset
+      tags: [auth]
+      summary: Email a reset link. Always 204, so it doesn't reveal which emails exist.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "204":
+          description: Sent if the account exists
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: End the current session
+      responses:
+        "204":
+          description: Signed out
+
 components:
   securitySchemes:
     bearerAuth:
@@ -986,6 +1551,27 @@ components:
       scheme: bearer
 
   parameters:
+    GenerationId:
+      name: generationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AutomationId:
+      name: automationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     TemplateId:
       name: templateId
       in: path
@@ -2049,3 +2635,617 @@ components:
               revenueCr:
                 type: number
                 description: Revenue in crore INR.
+
+    NotificationType:
+      type: string
+      enum: [lead, campaign, website, alert, message, milestone]
+
+    Notification:
+      type: object
+      required: [id, type, title, message, read, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        title:
+          type: string
+        message:
+          type: string
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationUpdate:
+      type: object
+      required: [read]
+      properties:
+        read:
+          type: boolean
+
+    LeadActivityType:
+      type: string
+      enum: [captured, stage-change, call, whatsapp, email, site-visit]
+
+    LeadActivity:
+      type: object
+      required: [id, leadId, type, title, description, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        leadId:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/LeadActivityType"
+        title:
+          type: string
+        description:
+          type: string
+          description: Extra detail, or an empty string.
+        createdAt:
+          type: string
+          format: date-time
+
+    CallLogInput:
+      type: object
+      required: [outcome]
+      properties:
+        outcome:
+          type: string
+          enum: [connected, interested, callback, not-interested, wrong-number, no-answer, voicemail]
+        sentiment:
+          type: string
+        nextAction:
+          type: string
+        duration:
+          type: string
+        notes:
+          type: string
+
+    LeadMessageInput:
+      type: object
+      required: [channel, text]
+      properties:
+        channel:
+          type: string
+          enum: [whatsapp]
+        text:
+          type: string
+          minLength: 1
+
+    SiteVisitInput:
+      type: object
+      required: [date, time, project]
+      properties:
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+        project:
+          type: string
+          minLength: 1
+        assignedTo:
+          type: string
+        reminder:
+          type: string
+        notes:
+          type: string
+
+    AutomationStepType:
+      type: string
+      enum: [trigger, whatsapp, email, sms, wait, condition, assign, tag, score, notification, webhook]
+
+    AutomationStepConfig:
+      type: object
+      description: Settings for a step; which fields apply depends on the step type.
+      properties:
+        trigger:
+          type: string
+        message:
+          type: string
+        subject:
+          type: string
+        delay:
+          type: number
+          minimum: 0
+        delayUnit:
+          type: string
+          enum: [minutes, hours, days]
+        condition:
+          type: string
+        assignTo:
+          type: string
+        tagName:
+          type: string
+        scoreValue:
+          type: number
+        notifyWho:
+          type: string
+        webhookUrl:
+          type: string
+
+    AutomationStep:
+      type: object
+      required: [id, type, name, description, config]
+      properties:
+        id:
+          type: string
+          description: Client-generated, unique within the automation.
+        type:
+          $ref: "#/components/schemas/AutomationStepType"
+        name:
+          type: string
+        description:
+          type: string
+        config:
+          $ref: "#/components/schemas/AutomationStepConfig"
+
+    AutomationInput:
+      type: object
+      required: [name, steps]
+      description: The first step must be the only trigger, followed by at least one action.
+      properties:
+        name:
+          type: string
+          minLength: 1
+        steps:
+          type: array
+          minItems: 2
+          items:
+            $ref: "#/components/schemas/AutomationStep"
+
+    Automation:
+      type: object
+      required: [id, name, steps, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutomationStep"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AiContentTool:
+      type: string
+      enum: [copy, whatsapp, social, faq]
+
+    AiToolType:
+      type: string
+      description: Every AI Studio tool, including the ones that don't use /ai/generate.
+      enum: [copy, whatsapp, social, faq, website, webpage]
+
+    AiContentInput:
+      type: object
+      required: [projectName, location, propertyType, tone, features, targetAudience, platform, numPosts, campaignGoal]
+      properties:
+        projectName:
+          type: string
+          minLength: 1
+        location:
+          type: string
+          minLength: 1
+        propertyType:
+          type: string
+        tone:
+          type: string
+        features:
+          type: string
+          description: Comma-separated.
+        targetAudience:
+          type: string
+        platform:
+          type: string
+        numPosts:
+          type: string
+        campaignGoal:
+          type: string
+
+    AiGenerateInput:
+      type: object
+      required: [tool, input]
+      properties:
+        tool:
+          $ref: "#/components/schemas/AiContentTool"
+        input:
+          $ref: "#/components/schemas/AiContentInput"
+
+    AiTitledText:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+
+    AiSocialPost:
+      allOf:
+        - $ref: "#/components/schemas/AiTitledText"
+        - type: object
+          required: [hashtags]
+          properties:
+            hashtags:
+              type: array
+              items:
+                type: string
+
+    AiFaq:
+      type: object
+      required: [q, a]
+      properties:
+        q:
+          type: string
+        a:
+          type: string
+
+    AiCopy:
+      type: object
+      required: [hero, about, features, cta]
+      properties:
+        hero:
+          type: object
+          required: [headline, tagline, description]
+          properties:
+            headline:
+              type: string
+            tagline:
+              type: string
+            description:
+              type: string
+        about:
+          type: object
+          required: [title, paragraphs]
+          properties:
+            title:
+              type: string
+            paragraphs:
+              type: array
+              items:
+                type: string
+        features:
+          type: array
+          items:
+            type: string
+        cta:
+          type: object
+          required: [title, body]
+          properties:
+            title:
+              type: string
+            body:
+              type: string
+
+    AiContent:
+      type: object
+      description: The field for the requested tool is filled; the others are absent.
+      properties:
+        copy:
+          $ref: "#/components/schemas/AiCopy"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTitledText"
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiSocialPost"
+        faqs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiFaq"
+
+    AiGeneration:
+      type: object
+      required: [tool, input, title, content, plainText]
+      properties:
+        tool:
+          $ref: "#/components/schemas/AiContentTool"
+        input:
+          $ref: "#/components/schemas/AiContentInput"
+        title:
+          type: string
+        content:
+          $ref: "#/components/schemas/AiContent"
+        plainText:
+          type: string
+          description: The whole generation as text, for copying, drafts and downloads.
+
+    AiPageDesignInput:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+
+    AiPageDesign:
+      type: object
+      required: [reply, html]
+      properties:
+        reply:
+          type: string
+        html:
+          type: string
+
+    SavedGenerationInput:
+      type: object
+      required: [type, title, projectName, location, content]
+      properties:
+        type:
+          $ref: "#/components/schemas/AiToolType"
+        title:
+          type: string
+          minLength: 1
+        projectName:
+          type: string
+        location:
+          type: string
+        content:
+          type: string
+          minLength: 1
+
+    SavedGeneration:
+      type: object
+      required: [id, type, title, projectName, location, preview, content, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/AiToolType"
+        title:
+          type: string
+        projectName:
+          type: string
+        location:
+          type: string
+        preview:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+          enum: [completed, draft]
+        createdAt:
+          type: string
+          format: date-time
+
+    LighthouseIssue:
+      type: object
+      required: [title, description, impact]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        impact:
+          type: string
+          enum: [high, medium, low]
+        element:
+          type: string
+          description: The affected elements or potential savings.
+
+    LighthouseReport:
+      type: object
+      required:
+        [id, websiteId, ranAt, scores, metrics, opportunities, accessibilityIssues, accessibilityPassed, seoPassed, mobileFriendly, structuredDataValid, bestPracticesPassed, recommendation]
+      properties:
+        id:
+          type: string
+          format: uuid
+        websiteId:
+          type: string
+          format: uuid
+        ranAt:
+          type: string
+          format: date-time
+        scores:
+          type: object
+          required: [performance, accessibility, bestPractices, seo]
+          properties:
+            performance:
+              type: integer
+              minimum: 0
+              maximum: 100
+            accessibility:
+              type: integer
+              minimum: 0
+              maximum: 100
+            bestPractices:
+              type: integer
+              minimum: 0
+              maximum: 100
+            seo:
+              type: integer
+              minimum: 0
+              maximum: 100
+        metrics:
+          type: array
+          items:
+            type: object
+            required: [name, value, score, description]
+            properties:
+              name:
+                type: string
+              value:
+                type: string
+              score:
+                type: integer
+              description:
+                type: string
+        opportunities:
+          type: array
+          items:
+            $ref: "#/components/schemas/LighthouseIssue"
+        accessibilityIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/LighthouseIssue"
+        accessibilityPassed:
+          type: array
+          items:
+            type: string
+        seoPassed:
+          type: array
+          items:
+            type: object
+            required: [title, description]
+            properties:
+              title:
+                type: string
+              description:
+                type: string
+        mobileFriendly:
+          type: boolean
+        structuredDataValid:
+          type: boolean
+        bestPracticesPassed:
+          type: array
+          items:
+            type: object
+            required: [key, label]
+            properties:
+              key:
+                type: string
+                enum: [https, console, aspect-ratio, image-size]
+              label:
+                type: string
+        recommendation:
+          type: string
+
+    Subscription:
+      type: object
+      required: [plan, status, currentPeriodEnd, usage, paymentMethod]
+      properties:
+        plan:
+          type: object
+          required: [id, name, tagline, priceInr]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            tagline:
+              type: string
+            priceInr:
+              type: integer
+              description: Monthly price in rupees.
+        status:
+          type: string
+          enum: [active, cancelling]
+          description: cancelling means it won't renew at currentPeriodEnd.
+        currentPeriodEnd:
+          type: string
+          format: date
+        usage:
+          type: array
+          items:
+            type: object
+            required: [key, label, used, limit]
+            properties:
+              key:
+                type: string
+                enum: [websites, leads]
+              label:
+                type: string
+              used:
+                type: integer
+              limit:
+                type: integer
+        paymentMethod:
+          type: object
+          required: [brand, last4, expMonth, expYear]
+          properties:
+            brand:
+              type: string
+            last4:
+              type: string
+            expMonth:
+              type: integer
+            expYear:
+              type: integer
+
+    Invoice:
+      type: object
+      required: [id, number, issuedAt, amountInr, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        issuedAt:
+          type: string
+          format: date
+        amountInr:
+          type: integer
+        status:
+          type: string
+          enum: [paid, open, failed]
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+        remember:
+          type: boolean
+          description: Keep the session for longer.
+
+    RegisterInput:
+      type: object
+      required: [firstName, lastName, email, password]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+        lastName:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        company:
+          type: string
+        password:
+          type: string
+          minLength: 8
+
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    AuthSession:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          description: 'Send as "Authorization: Bearer <token>".'
+        user:
+          $ref: "#/components/schemas/Profile"

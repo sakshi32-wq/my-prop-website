@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
 import { Maximize2Icon, Minimize2Icon, SparklesIcon } from "lucide-react"
 
-import { EMPTY_FORM, getTool, INITIAL_GENERATIONS, isContentTool } from "./data"
-import type { ContentFormData, Generation, ToolId } from "./data"
+import { EMPTY_FORM, getTool, isContentTool } from "./data"
+import type { ContentFormData, ToolId } from "./data"
 import { ContentTool } from "./content-tool"
 import { RecentGenerations } from "./recent-generations"
 import { ToolList } from "./tool-list"
@@ -24,8 +24,6 @@ import { cn } from "@/lib/utils"
 export function AiStudio() {
   const [selectedTool, setSelectedTool] = useState<ToolId>("copy")
   const [formData, setFormData] = useState<ContentFormData>(EMPTY_FORM)
-  const [generations, setGenerations] =
-    useState<Array<Generation>>(INITIAL_GENERATIONS)
   const [fullscreen, setFullscreen] = useState(false)
 
   const tool = getTool(selectedTool)
@@ -56,14 +54,7 @@ export function AiStudio() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-6">
           <ToolList value={selectedTool} onValueChange={setSelectedTool} />
-          <RecentGenerations
-            generations={generations}
-            onDelete={(id) =>
-              setGenerations((current) =>
-                current.filter((item) => item.id !== id)
-              )
-            }
-          />
+          <RecentGenerations />
         </div>
 
         <Card
@@ -101,9 +92,6 @@ export function AiStudio() {
                 tool={selectedTool}
                 data={formData}
                 onDataChange={setFormData}
-                onSaveDraft={(generation) =>
-                  setGenerations((current) => [generation, ...current])
-                }
               />
             )}
           </CardContent>

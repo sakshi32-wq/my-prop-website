@@ -21,14 +21,8 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-import {
-  ACCESSIBILITY_ISSUES,
-  ACCESSIBILITY_PASSED,
-  BEST_PRACTICES_PASSED,
-  PERFORMANCE_METRICS,
-  PERFORMANCE_OPPORTUNITIES,
-  SEO_PASSED,
-} from "./data"
+import { BEST_PRACTICE_ICONS } from "./data"
+import type { LighthouseReport } from "./data"
 import { IssueList, SectionCard } from "./report-sections"
 
 const TABS = [
@@ -38,7 +32,7 @@ const TABS = [
   { value: "best-practices", label: "Best Practices" },
 ]
 
-export function ReportTabs() {
+export function ReportTabs({ report }: { report: LighthouseReport }) {
   return (
     <Tabs defaultValue="performance">
       <TabsList className="grid w-full grid-cols-2 group-data-horizontal/tabs:h-auto sm:grid-cols-4">
@@ -51,7 +45,7 @@ export function ReportTabs() {
 
       <TabsContent value="performance" className="mt-2 flex flex-col gap-4">
         <SectionCard icon={ClockIcon} title="Performance Metrics">
-          {PERFORMANCE_METRICS.map((metric) => (
+          {report.metrics.map((metric) => (
             <div key={metric.name} className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-col gap-0.5">
@@ -76,19 +70,19 @@ export function ReportTabs() {
           title="Opportunities"
           description="These suggestions can help your page load faster."
         >
-          <IssueList issues={PERFORMANCE_OPPORTUNITIES} kind="opportunity" />
+          <IssueList issues={report.opportunities} kind="opportunity" />
         </SectionCard>
       </TabsContent>
 
       <TabsContent value="accessibility" className="mt-2 flex flex-col gap-4">
         <SectionCard icon={AccessibilityIcon} title="Accessibility Issues">
-          <IssueList issues={ACCESSIBILITY_ISSUES} kind="issue" />
+          <IssueList issues={report.accessibilityIssues} kind="issue" />
           <Alert>
             <CircleCheckIcon />
             <AlertTitle>Passed Audits</AlertTitle>
             <AlertDescription>
               <ul className="ml-4 flex list-disc flex-col gap-1">
-                {ACCESSIBILITY_PASSED.map((audit) => (
+                {report.accessibilityPassed.map((audit) => (
                   <li key={audit}>{audit}</li>
                 ))}
               </ul>
@@ -104,7 +98,7 @@ export function ReportTabs() {
             <AlertTitle>Passed Audits</AlertTitle>
             <AlertDescription>
               <ul className="flex flex-col gap-2">
-                {SEO_PASSED.map((audit) => (
+                {report.seoPassed.map((audit) => (
                   <li key={audit.title} className="flex flex-col">
                     <span className="font-medium text-foreground">
                       {audit.title}
@@ -121,7 +115,9 @@ export function ReportTabs() {
                 <SmartphoneIcon />
               </ItemMedia>
               <ItemContent>
-                <ItemTitle className="text-lg">Yes</ItemTitle>
+                <ItemTitle className="text-lg">
+                  {report.mobileFriendly ? "Yes" : "No"}
+                </ItemTitle>
                 <ItemDescription>Mobile Friendly</ItemDescription>
               </ItemContent>
             </Item>
@@ -130,7 +126,9 @@ export function ReportTabs() {
                 <FileTextIcon />
               </ItemMedia>
               <ItemContent>
-                <ItemTitle className="text-lg">Valid</ItemTitle>
+                <ItemTitle className="text-lg">
+                  {report.structuredDataValid ? "Valid" : "Invalid"}
+                </ItemTitle>
                 <ItemDescription>Structured Data</ItemDescription>
               </ItemContent>
             </Item>
@@ -145,22 +143,22 @@ export function ReportTabs() {
             <AlertTitle>Passed Checks</AlertTitle>
             <AlertDescription>
               <ul className="flex flex-col gap-2">
-                {BEST_PRACTICES_PASSED.map((check) => (
-                  <li key={check.label} className="flex items-center gap-2">
-                    <check.icon className="size-4 shrink-0" />
-                    {check.label}
-                  </li>
-                ))}
+                {report.bestPracticesPassed.map((check) => {
+                  const Icon = BEST_PRACTICE_ICONS[check.key]
+                  return (
+                    <li key={check.key} className="flex items-center gap-2">
+                      <Icon className="size-4 shrink-0" />
+                      {check.label}
+                    </li>
+                  )
+                })}
               </ul>
             </AlertDescription>
           </Alert>
           <Alert>
             <LightbulbIcon />
             <AlertTitle>Recommendation</AlertTitle>
-            <AlertDescription>
-              Consider implementing a Content Security Policy to prevent
-              cross-site scripting attacks.
-            </AlertDescription>
+            <AlertDescription>{report.recommendation}</AlertDescription>
           </Alert>
         </SectionCard>
       </TabsContent>

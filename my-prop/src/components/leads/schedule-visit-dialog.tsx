@@ -3,9 +3,12 @@ import { format, startOfToday } from "date-fns"
 import { CalendarIcon, CheckIcon, MapPinIcon, SaveIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { SALES_REPS, VISIT_REMINDERS } from "./data"
 import { LeadSummary } from "./lead-summary"
 import { OptionSelect } from "./option-select"
-import type { Lead } from "./data"
+import type { Lead, SiteVisitInput } from "./data"
+import { useScheduleSiteVisit } from "@/api/generated/leads/leads"
+import { Spinner } from "@/components/ui/spinner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -33,21 +36,6 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { PROJECTS } from "@/lib/mock-data"
 
-const SALES_REPS = [
-  { value: "Amit Sharma", label: "Amit Sharma (Senior Sales)" },
-  { value: "Priya Singh", label: "Priya Singh (Sales Manager)" },
-  { value: "Rajesh Kumar", label: "Rajesh Kumar (Sales Executive)" },
-  { value: "Neha Patel", label: "Neha Patel (Sales Associate)" },
-]
-
-const REMINDERS = [
-  { value: "15min", label: "15 minutes before" },
-  { value: "30min", label: "30 minutes before" },
-  { value: "1hour", label: "1 hour before" },
-  { value: "2hours", label: "2 hours before" },
-  { value: "1day", label: "1 day before" },
-]
-
 const CHECKLIST = [
   "Confirm availability with the lead 1 day before",
   "Prepare property brochures and pricing details",
@@ -59,10 +47,12 @@ type Errors = Partial<Record<"date" | "time" | "project", string>>
 
 function VisitForm({
   lead,
-  onScheduled,
+  pending,
+  onSchedule,
 }: {
   lead: Lead
-  onScheduled: () => void
+  pending: boolean
+  onSchedule: (visit: SiteVisitInput) => void
 }) {
   const [date, setDate] = useState<Date | undefined>()
   const [dateOpen, setDateOpen] = useState(false)
@@ -85,10 +75,14 @@ function VisitForm({
     if (!project) next.project = "Select a project."
     setErrors(next)
     if (!date || !time || !project) return
-    toast.success("Site visit scheduled", {
-      description: `${lead.name} · ${project} on ${format(date, "EEE, d MMM")} at ${time}`,
+    onSchedule({
+      date: format(date, "yyyy-MM-dd"),
+      time,
+      project,
+      assignedTo: assignedTo || undefined,
+      reminder,
+      notes: notes.trim() || undefined,
     })
-    onScheduled()
   }
 
   return (
@@ -173,7 +167,7 @@ function VisitForm({
               id="visit-reminder"
               value={reminder}
               onChange={setReminder}
-              options={REMINDERS}
+              options={VISIT_REMINDERS}
             />
           </Field>
         </div>
@@ -210,8 +204,12 @@ function VisitForm({
             Cancel
           </Button>
         </DialogClose>
-        <Button type="submit">
-          <SaveIcon data-icon="inline-start" />
+        <Button type="submit" disabled={pending}>
+          {pending ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <SaveIcon data-icon="inline-start" />
+          )}
           Schedule Visit
         </Button>
       </DialogFooter>
@@ -223,13 +221,23 @@ export function ScheduleVisitDialog({
   open,
   onOpenChange,
   lead,
-  onScheduled,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   lead: Lead | null
-  onScheduled?: (lead: Lead) => void
 }) {
+  // The server also moves early-stage leads to "Site Visit Scheduled".
+  const scheduleVisit = useScheduleSiteVisit({
+    mutation: {
+      onSuccess: (activity) => {
+        toast.success("Site visit scheduled", {
+          description: activity.description,
+        })
+        onOpenChange(false)
+      },
+    },
+  })
+
   return (
     <Dialog open={open && !!lead} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -243,10 +251,10 @@ export function ScheduleVisitDialog({
           <VisitForm
             key={lead.id}
             lead={lead}
-            onScheduled={() => {
-              onScheduled?.(lead)
-              onOpenChange(false)
-            }}
+            pending={scheduleVisit.isPending}
+            onSchedule={(data) =>
+              scheduleVisit.mutate({ leadId: lead.id, data })
+            }
           />
         )}
       </DialogContent>

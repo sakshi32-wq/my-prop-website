@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/item"
 import { Progress } from "@/components/ui/progress"
 
-import { SCORES } from "./data"
-import type { Impact, Issue } from "./data"
+import { SCORE_ITEMS } from "./data"
+import type { Impact, Issue, LighthouseReport } from "./data"
 
 export function scoreRating(score: number) {
   if (score >= 90) return { label: "Good", variant: "secondary" as const }
@@ -37,11 +37,12 @@ const IMPACT_BADGE: Record<
   low: { label: "Low", variant: "outline" },
 }
 
-export function ScoreGrid() {
+export function ScoreGrid({ scores }: { scores: LighthouseReport["scores"] }) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      {SCORES.map((item) => {
-        const rating = scoreRating(item.score)
+      {SCORE_ITEMS.map((item) => {
+        const score = scores[item.key]
+        const rating = scoreRating(score)
         return (
           <Card key={item.label} size="sm">
             <CardHeader>
@@ -50,12 +51,12 @@ export function ScoreGrid() {
                 <span className="truncate">{item.label}</span>
               </CardDescription>
               <CardTitle className="flex flex-wrap items-center gap-2 text-3xl font-semibold tabular-nums">
-                {item.score}
+                {score}
                 <Badge variant={rating.variant}>{rating.label}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Progress value={item.score} aria-label={`${item.label} score`} />
+              <Progress value={score} aria-label={`${item.label} score`} />
             </CardContent>
           </Card>
         )

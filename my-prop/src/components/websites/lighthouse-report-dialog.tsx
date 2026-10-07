@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react"
+import { formatDistanceToNow } from "date-fns"
 import { GaugeIcon, GlobeIcon, RefreshCwIcon, ZapIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { ApiError } from "@/api/fetcher"
+import {
+  useGetLatestLighthouseReport,
+  useRunLighthouseAudit,
+} from "@/api/generated/websites/websites"
+import { QueryError } from "@/components/query-error"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -25,10 +32,9 @@ import { Spinner } from "@/components/ui/spinner"
 import { ScoreGrid } from "./lighthouse/report-sections"
 import { ReportTabs } from "./lighthouse/report-tabs"
 
-const GENERATION_MS = 3000
+/** Roughly how long an audit takes; the progress bar fills over this time. */
+const EXPECTED_MS = 2500
 const TICK_MS = 100
-
-type Phase = "idle" | "generating" | "report"
 
 export function LighthouseReportDialog({
   open,
@@ -39,15 +45,31 @@ export function LighthouseReportDialog({
   onOpenChange: (open: boolean) => void
   website: { id: string; name: string; domain: string } | null
 }) {
-  // The report is tied to one website: opening another one starts from idle.
-  const [run, setRun] = useState<{ websiteId: string; phase: Phase } | null>(
-    null
-  )
+  const websiteId = website?.id ?? ""
+  const latestQuery = useGetLatestLighthouseReport(websiteId, {
+    query: { enabled: open && !!website, retry: false },
+  })
+  const runAudit = useRunLighthouseAudit({
+    mutation: {
+      onSuccess: () =>
+        toast.success("Lighthouse report ready", {
+          description: website?.name,
+        }),
+      onSettled: stopTimer,
+    },
+  })
   const [progress, setProgress] = useState(0)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const phase: Phase =
-    run && website && run.websiteId === website.id ? run.phase : "idle"
+  const running =
+    runAudit.isPending && runAudit.variables.websiteId === websiteId
+  // A 404 just means this website has never been audited.
+  const neverRun =
+    latestQuery.error instanceof ApiError && latestQuery.error.status === 404
+  // A fresh audit is shown straight away, while the latest report refetches.
+  const audited =
+    runAudit.data?.websiteId === websiteId ? runAudit.data : undefined
+  const report = running ? undefined : (audited ?? latestQuery.data)
 
   function stopTimer() {
     if (timer.current) clearInterval(timer.current)
@@ -56,36 +78,36 @@ export function LighthouseReportDialog({
 
   useEffect(() => stopTimer, [])
 
-  function reset() {
-    stopTimer()
-    setRun(null)
-    setProgress(0)
-  }
-
   function handleOpenChange(next: boolean) {
-    if (!next) reset()
+    if (!next) {
+      stopTimer()
+      runAudit.reset()
+    }
     onOpenChange(next)
   }
 
   function generate() {
     if (!website) return
-    const websiteId = website.id
     stopTimer()
     setProgress(0)
-    setRun({ websiteId, phase: "generating" })
     const started = Date.now()
+    // The audit has no progress events, so ease towards 95% until it ends.
     timer.current = setInterval(() => {
       const elapsed = Date.now() - started
-      setProgress(Math.min(100, Math.round((elapsed / GENERATION_MS) * 100)))
-      if (elapsed >= GENERATION_MS) {
-        stopTimer()
-        setRun({ websiteId, phase: "report" })
-        toast.success("Lighthouse report ready", {
-          description: website.name,
-        })
-      }
+      setProgress(Math.min(95, Math.round((elapsed / EXPECTED_MS) * 100)))
     }, TICK_MS)
+    runAudit.mutate({ websiteId: website.id })
   }
+
+  const phase = running
+    ? "generating"
+    : report
+      ? "report"
+      : latestQuery.isPending && open && website
+        ? "loading"
+        : latestQuery.isError && !neverRun
+          ? "error"
+          : "idle"
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -103,21 +125,38 @@ export function LighthouseReportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {phase === "report" ? (
+        {phase === "report" && report ? (
           <>
             <ScrollArea className="-mx-4 h-[calc(90dvh-11rem)] min-h-0">
               <div className="flex flex-col gap-4 px-4 pb-1">
-                <ScoreGrid />
-                <ReportTabs />
+                <ScoreGrid scores={report.scores} />
+                <ReportTabs report={report} />
               </div>
             </ScrollArea>
-            <div className="flex justify-end">
+            <div className="flex items-center justify-end gap-3">
+              <span className="text-xs text-muted-foreground">
+                Ran {formatDistanceToNow(report.ranAt, { addSuffix: true })}
+              </span>
               <Button variant="outline" size="sm" onClick={generate}>
                 <RefreshCwIcon data-icon="inline-start" />
                 Run again
               </Button>
             </div>
           </>
+        ) : phase === "loading" ? (
+          <div
+            className="flex justify-center py-16"
+            aria-busy="true"
+            aria-label="Loading the last report"
+          >
+            <Spinner />
+          </div>
+        ) : phase === "error" ? (
+          <QueryError
+            title="Couldn't load the last report"
+            error={latestQuery.error}
+            onRetry={() => void latestQuery.refetch()}
+          />
         ) : (
           <Empty className="py-10">
             <EmptyHeader>

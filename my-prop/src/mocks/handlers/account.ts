@@ -2,6 +2,7 @@
 import { HttpResponse, delay, http } from "msw"
 
 import { db } from "../db"
+import { currentUser } from "../session"
 import { apiPath, errorResponse, isRecord, readJson } from "../utils"
 import type {
   Error as ErrorBody,
@@ -27,9 +28,9 @@ const PREFERENCE_FIELDS = [
 ] as const
 
 export const accountHandlers = [
-  http.get<never, never, Profile>(apiPath("/me"), async () => {
+  http.get<never, never, Profile>(apiPath("/me"), async ({ request }) => {
     await delay()
-    return HttpResponse.json(db.profile.get())
+    return HttpResponse.json(currentUser(request))
   }),
 
   http.patch<never, never, Profile | ErrorBody>(
@@ -51,7 +52,14 @@ export const accountHandlers = [
         return errorResponse(422, "First and last name are required.")
       if (patch.email !== undefined && !EMAIL_RE.test(patch.email))
         return errorResponse(422, "Enter a valid email address.")
-      return HttpResponse.json(db.profile.update(patch))
+      const me = currentUser(request)
+      if (
+        patch.email &&
+        db.users.all().some((u) => u.email === patch.email && u.id !== me.id)
+      )
+        return errorResponse(422, "Another account uses that email.")
+      const updated = db.users.update(me.id, patch) ?? { ...me, ...patch }
+      return HttpResponse.json(updated)
     }
   ),
 

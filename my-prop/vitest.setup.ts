@@ -33,5 +33,7 @@ afterEach(() => {
   cleanup()
   server.resetHandlers()
   db.reset()
+  // The session token lives in localStorage.
+  localStorage.clear()
 })
 afterAll(() => server.close())

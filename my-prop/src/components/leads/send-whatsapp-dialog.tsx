@@ -4,6 +4,7 @@ import { toast } from "sonner"
 
 import { firstName, phoneDigits } from "./data"
 import type { Lead } from "./data"
+import { useSendLeadMessage } from "@/api/generated/leads/leads"
 import { Badge } from "@/components/ui/badge"
 import { Bubble, BubbleContent } from "@/components/ui/bubble"
 import { Button } from "@/components/ui/button"
@@ -78,7 +79,7 @@ function Composer({
 }: {
   lead: Lead
   initialMessage: string
-  onSent: () => void
+  onSent: (text: string) => void
 }) {
   const [message, setMessage] = useState(initialMessage)
   const [template, setTemplate] = useState("")
@@ -99,7 +100,7 @@ function Composer({
     toast.success("Opening WhatsApp", {
       description: `Message to ${lead.name} is ready to send.`,
     })
-    onSent()
+    onSent(text)
   }
 
   return (
@@ -205,6 +206,10 @@ export function SendWhatsAppDialog({
   lead: Lead | null
   initialMessage?: string
 }) {
+  // WhatsApp opens on the click itself (popup blockers); this only records
+  // the message on the lead's timeline.
+  const sendMessage = useSendLeadMessage()
+
   return (
     <Dialog open={open && !!lead} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
@@ -220,7 +225,13 @@ export function SendWhatsAppDialog({
             key={lead.id}
             lead={lead}
             initialMessage={initialMessage}
-            onSent={() => onOpenChange(false)}
+            onSent={(text) => {
+              sendMessage.mutate({
+                leadId: lead.id,
+                data: { channel: "whatsapp", text },
+              })
+              onOpenChange(false)
+            }}
           />
         )}
       </DialogContent>

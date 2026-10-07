@@ -12,7 +12,7 @@ import { faker } from "@faker-js/faker"
 import { HttpResponse, http } from "msw"
 import type { RequestHandlerOptions } from "msw"
 
-import type { Website, WebsiteContent } from "../model"
+import type { LighthouseReport, Website, WebsiteContent } from "../model"
 
 export const getListWebsitesResponseMock = (): Website[] =>
   Array.from(
@@ -225,6 +225,154 @@ export const getPublishWebsiteResponseMock = (
   ...overrideResponse,
 })
 
+export const getGetLatestLighthouseReportResponseMock = (
+  overrideResponse: Partial<Extract<LighthouseReport, object>> = {}
+): LighthouseReport => ({
+  id: faker.string.uuid(),
+  websiteId: faker.string.uuid(),
+  ranAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  scores: {
+    performance: faker.number.int({ min: 0, max: 100 }),
+    accessibility: faker.number.int({ min: 0, max: 100 }),
+    bestPractices: faker.number.int({ min: 0, max: 100 }),
+    seo: faker.number.int({ min: 0, max: 100 }),
+  },
+  metrics: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    value: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    score: faker.number.int(),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  opportunities: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    impact: faker.helpers.arrayElement(["high", "medium", "low"] as const),
+    element: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      undefined,
+    ]),
+  })),
+  accessibilityIssues: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    impact: faker.helpers.arrayElement(["high", "medium", "low"] as const),
+    element: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      undefined,
+    ]),
+  })),
+  accessibilityPassed: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
+  seoPassed: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  mobileFriendly: faker.datatype.boolean(),
+  structuredDataValid: faker.datatype.boolean(),
+  bestPracticesPassed: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    key: faker.helpers.arrayElement([
+      "https",
+      "console",
+      "aspect-ratio",
+      "image-size",
+    ] as const),
+    label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  recommendation: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+})
+
+export const getRunLighthouseAuditResponseMock = (
+  overrideResponse: Partial<Extract<LighthouseReport, object>> = {}
+): LighthouseReport => ({
+  id: faker.string.uuid(),
+  websiteId: faker.string.uuid(),
+  ranAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  scores: {
+    performance: faker.number.int({ min: 0, max: 100 }),
+    accessibility: faker.number.int({ min: 0, max: 100 }),
+    bestPractices: faker.number.int({ min: 0, max: 100 }),
+    seo: faker.number.int({ min: 0, max: 100 }),
+  },
+  metrics: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    value: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    score: faker.number.int(),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  opportunities: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    impact: faker.helpers.arrayElement(["high", "medium", "low"] as const),
+    element: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      undefined,
+    ]),
+  })),
+  accessibilityIssues: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    impact: faker.helpers.arrayElement(["high", "medium", "low"] as const),
+    element: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      undefined,
+    ]),
+  })),
+  accessibilityPassed: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
+  seoPassed: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  mobileFriendly: faker.datatype.boolean(),
+  structuredDataValid: faker.datatype.boolean(),
+  bestPracticesPassed: Array.from(
+    { length: faker.number.int({ min: 1, max: 10 }) },
+    (_, i) => i + 1
+  ).map(() => ({
+    key: faker.helpers.arrayElement([
+      "https",
+      "console",
+      "aspect-ratio",
+      "image-size",
+    ] as const),
+    label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  recommendation: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+})
+
 export const getListWebsitesMockHandler = (
   overrideResponse?:
     | Website[]
@@ -368,6 +516,54 @@ export const getPublishWebsiteMockHandler = (
     options
   )
 }
+
+export const getGetLatestLighthouseReportMockHandler = (
+  overrideResponse?:
+    | LighthouseReport
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0]
+      ) => Promise<LighthouseReport> | LighthouseReport),
+  options?: RequestHandlerOptions
+) => {
+  return http.get(
+    "/api/websites/:websiteId/lighthouse",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getGetLatestLighthouseReportResponseMock(),
+        { status: 200 }
+      )
+    },
+    options
+  )
+}
+
+export const getRunLighthouseAuditMockHandler = (
+  overrideResponse?:
+    | LighthouseReport
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0]
+      ) => Promise<LighthouseReport> | LighthouseReport),
+  options?: RequestHandlerOptions
+) => {
+  return http.post(
+    "/api/websites/:websiteId/lighthouse",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRunLighthouseAuditResponseMock(),
+        { status: 201 }
+      )
+    },
+    options
+  )
+}
 export const getWebsitesMock = () => [
   getListWebsitesMockHandler(),
   getCreateWebsiteMockHandler(),
@@ -375,4 +571,6 @@ export const getWebsitesMock = () => [
   getGetWebsiteContentMockHandler(),
   getSaveWebsiteContentMockHandler(),
   getPublishWebsiteMockHandler(),
+  getGetLatestLighthouseReportMockHandler(),
+  getRunLighthouseAuditMockHandler(),
 ]

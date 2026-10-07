@@ -1,11 +1,21 @@
 // Stateful handlers for the "leads" tag: writes really change the mock db.
 import { HttpResponse, delay, http } from "msw"
+import { format, isValid, parseISO } from "date-fns"
 
 import { db } from "../db"
 import { apiPath, errorResponse, isRecord, readJson } from "../utils"
+import {
+  CALL_DURATIONS,
+  CALL_NEXT_ACTIONS,
+  CALL_OUTCOMES,
+  optionLabel,
+  sourceLabel,
+  stageLabel,
+} from "@/components/leads/data"
 import type {
   Error as ErrorBody,
   Lead,
+  LeadActivity,
   LeadSource,
   LeadStage,
   LeadUpdate,
@@ -39,6 +49,11 @@ const STRING_FIELDS = [
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type LeadParams = { leadId: string }
+
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+const EARLY_STAGES: Array<LeadStage> = ["new", "contacted", "interested"]
+
+const stringOr = (value: unknown) => (typeof value === "string" ? value : "")
 
 /** Validates a create (partial = false) or update body like a real API would. */
 function parseLeadBody(
@@ -163,6 +178,10 @@ export const leadHandlers = [
         id: crypto.randomUUID(),
         addedAt: new Date().toISOString(),
       })
+      addActivity(lead.id, "captured", {
+        title: `Lead captured via ${sourceLabel(lead.source)}`,
+        description: lead.project,
+      })
       return HttpResponse.json(lead, { status: 201 })
     }
   ),
@@ -181,12 +200,17 @@ export const leadHandlers = [
     apiPath("/leads/:leadId"),
     async ({ params, request }) => {
       await delay()
-      if (!db.leads.find(params.leadId))
-        return errorResponse(404, "Lead not found.")
+      const before = db.leads.find(params.leadId)
+      if (!before) return errorResponse(404, "Lead not found.")
       const parsed = parseLeadBody(await readJson(request), true)
       if ("error" in parsed) return errorResponse(422, parsed.error)
       const lead = db.leads.update(params.leadId, parsed.data)
       if (!lead) return errorResponse(404, "Lead not found.")
+      if (lead.stage !== before.stage)
+        addActivity(lead.id, "stage-change", {
+          title: `Moved to ${stageLabel(lead.stage)}`,
+          description: `From ${stageLabel(before.stage)}`,
+        })
       return HttpResponse.json(lead)
     }
   ),
@@ -197,7 +221,114 @@ export const leadHandlers = [
       await delay()
       if (!db.leads.remove(params.leadId))
         return errorResponse(404, "Lead not found.")
+      for (const activity of db.leadActivities.all())
+        if (activity.leadId === params.leadId)
+          db.leadActivities.remove(activity.id)
       return new HttpResponse(null, { status: 204 })
     }
   ),
+
+  http.get<LeadParams, never, Array<LeadActivity> | ErrorBody>(
+    apiPath("/leads/:leadId/activities"),
+    async ({ params }) => {
+      await delay()
+      if (!db.leads.find(params.leadId))
+        return errorResponse(404, "Lead not found.")
+      const activities = db.leadActivities
+        .all()
+        .filter((a) => a.leadId === params.leadId)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      return HttpResponse.json(activities)
+    }
+  ),
+
+  http.post<LeadParams, never, LeadActivity | ErrorBody>(
+    apiPath("/leads/:leadId/calls"),
+    async ({ params, request }) => {
+      await delay()
+      if (!db.leads.find(params.leadId))
+        return errorResponse(404, "Lead not found.")
+      const body = await readJson(request)
+      if (!isRecord(body)) return errorResponse(422, "Invalid body.")
+      const outcome = optionLabel(CALL_OUTCOMES, stringOr(body.outcome))
+      if (!outcome) return errorResponse(422, "Choose the call outcome.")
+      const activity = addActivity(params.leadId, "call", {
+        title: `Call logged: ${outcome}`,
+        description: [
+          optionLabel(CALL_DURATIONS, stringOr(body.duration)),
+          optionLabel(CALL_NEXT_ACTIONS, stringOr(body.nextAction)),
+          stringOr(body.notes).trim(),
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      })
+      return HttpResponse.json(activity, { status: 201 })
+    }
+  ),
+
+  http.post<LeadParams, never, LeadActivity | ErrorBody>(
+    apiPath("/leads/:leadId/messages"),
+    async ({ params, request }) => {
+      await delay()
+      if (!db.leads.find(params.leadId))
+        return errorResponse(404, "Lead not found.")
+      const body = await readJson(request)
+      if (!isRecord(body) || body.channel !== "whatsapp")
+        return errorResponse(422, "channel must be whatsapp.")
+      const text = stringOr(body.text).trim()
+      if (!text) return errorResponse(422, "The message is empty.")
+      const activity = addActivity(params.leadId, "whatsapp", {
+        title: "WhatsApp message sent",
+        description: text.length > 80 ? `${text.slice(0, 77)}…` : text,
+      })
+      return HttpResponse.json(activity, { status: 201 })
+    }
+  ),
+
+  http.post<LeadParams, never, LeadActivity | ErrorBody>(
+    apiPath("/leads/:leadId/site-visits"),
+    async ({ params, request }) => {
+      await delay()
+      const lead = db.leads.find(params.leadId)
+      if (!lead) return errorResponse(404, "Lead not found.")
+      const body = await readJson(request)
+      if (!isRecord(body)) return errorResponse(422, "Invalid body.")
+      const date = parseISO(stringOr(body.date))
+      const time = stringOr(body.time)
+      const project = stringOr(body.project).trim()
+      if (!isValid(date)) return errorResponse(422, "Pick a visit date.")
+      if (!TIME_RE.test(time)) return errorResponse(422, "Pick a visit time.")
+      if (!project) return errorResponse(422, "Select a project.")
+
+      const rep = stringOr(body.assignedTo)
+      const activity = addActivity(params.leadId, "site-visit", {
+        title: "Site visit scheduled",
+        description: `${project} on ${format(date, "EEE, d MMM")} at ${time}${rep ? ` with ${rep}` : ""}`,
+      })
+      // Early-stage leads move along the pipeline.
+      if (EARLY_STAGES.includes(lead.stage)) {
+        db.leads.update(lead.id, { stage: "scheduled" })
+        addActivity(lead.id, "stage-change", {
+          title: `Moved to ${stageLabel("scheduled")}`,
+          description: `From ${stageLabel(lead.stage)}`,
+        })
+      }
+      return HttpResponse.json(activity, { status: 201 })
+    }
+  ),
 ]
+
+function addActivity(
+  leadId: string,
+  type: LeadActivity["type"],
+  { title, description }: { title: string; description: string }
+) {
+  return db.leadActivities.insert({
+    id: crypto.randomUUID(),
+    leadId,
+    type,
+    title,
+    description,
+    createdAt: new Date().toISOString(),
+  })
+}

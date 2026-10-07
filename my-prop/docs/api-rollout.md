@@ -34,14 +34,20 @@ reference implementation for everything below.
 Out of scope for now (still simulated, see `docs/replication-plan.md`): auth, AI
 generation, Lighthouse reports, billing.
 
-Still local state, and candidates for a next round:
+### Round 2
 
-- the header's notifications popover (`app-shell/notifications-popover.tsx`, a
-  `notifications` tag with list and mark-read)
-- the campaign Automation Builder (`campaigns/automation/*`, an `automations` tag)
-- the lead activity timeline, call log and WhatsApp/site-visit actions in
-  `leads/*-dialog.tsx`, which only show toasts today
-- AI Studio's recent generations (`ai-studio/recent-generations.tsx`)
+Committed together in one commit on `feat/schema-first-api`. It was held back for
+review first, so it isn't split per domain like Round 1.
+
+| # | Domain (tag) | Source of local state | Status |
+|---|---|---|---|
+| 10 | notifications | `app-shell/notifications-popover.tsx` | ✅ done |
+| 11 | lead activities (under the `leads` tag) | `leads/lead-detail-sheet.tsx` timeline, `call-lead-dialog.tsx`, `send-whatsapp-dialog.tsx`, `schedule-visit-dialog.tsx` | ✅ done |
+| 12 | automations | `campaigns/automation/*` | ✅ done |
+| 13 | ai (generation + history) | `ai-studio/*` | ✅ done |
+| 14 | lighthouse (under `websites`) | `websites/lighthouse-report-dialog.tsx` | ✅ done |
+| 15 | billing | `settings/billing-tab.tsx` | ✅ done |
+| 16 | auth | `auth/*-form.tsx`, `app-shell/user-menu.tsx` logout | ✅ done |
 
 ## Recipe (per domain)
 
@@ -167,3 +173,48 @@ Follow the Leads files as the template for each step.
   `toAnalyticsView` adds the UI-only labels and chart colours. The numbers are demo
   values and aren't derived from the other mock tables (for example, Total Leads
   doesn't count the leads board).
+- **notifications (round 2):** list, mark one read, mark all read, delete, all
+  optimistic. Icons come from the `type`; times are shown relative to `createdAt`.
+- **lead activities (round 2):** `GET /leads/{id}/activities` feeds the detail
+  sheet's timeline. `POST .../calls`, `.../messages` and `.../site-visits` record
+  actions; the server writes each title and description from the option lists in
+  `leads/data.ts`. The server also records "captured" on create and "stage-change"
+  on update. Scheduling a visit moves new/contacted/interested leads to "scheduled"
+  on the server (the page's own stage bump is gone). WhatsApp still opens `wa.me`
+  on the click itself, and the message is recorded in the background.
+- **automations (round 2):** the builder loads `listAutomations` and edits the first
+  automation (seeded with the starter flow). Step edits stay local until "Save
+  Automation", which sends a `PUT` (or a `POST` when none exists yet). The server
+  requires a single leading trigger, at least one action, and unique step ids. The
+  UI still edits one automation; a picker for several is a possible next step.
+- **ai (round 2):** `POST /ai/generate` returns structured content (copy sections,
+  messages, posts or FAQs) plus `plainText` and `title`. The canned generators moved
+  from `ai-studio/content.ts` to `src/mocks/ai-content.ts`, and the output
+  components render the response. "Save to Drafts" is `POST /ai/generations`; the
+  history list loads, and deletes optimistically, through `/ai/generations`. The
+  page designer's chat calls `POST /ai/page-design`, and its code view and download
+  use the returned HTML; errors show in the chat rather than as a toast
+  (`meta.errorToast: false`). "Apply to Website" and "Use This Content" still only
+  show a toast.
+- **lighthouse (round 2):** `GET /websites/{id}/lighthouse` returns the latest report,
+  or 404 when there isn't one (shown as "Run Lighthouse Analysis").
+  `POST /websites/{id}/lighthouse` runs an audit; the mock takes 2.5 s in the browser
+  and 5 ms in tests. The progress bar eases towards 95% while the request runs, and
+  the fresh report shows straight away. The report components take the report as
+  data; icons stay in the UI.
+- **billing (round 2):** `GET /billing/subscription` returns the plan, status
+  (`active`/`cancelling`), renewal date, usage and card; "Websites" usage counts the
+  mock websites table. Cancel and resume are `POST`s, and "Upgrade Plan" is
+  `POST /billing/upgrade-requests`. `GET /billing/invoices` feeds the history; invoice
+  downloads are still built in the browser. Editing or adding cards stays a
+  "payment partner" message.
+- **auth (round 2):** `POST /auth/login` and `/auth/register` return
+  `{ token, user }`; the forms store the token with `setAuthToken` (in
+  `src/api/fetcher.ts`), clear cached queries and open `/app`.
+  `POST /auth/forgot-password` always returns 204. Logout calls `POST /auth/logout`,
+  then clears the token and cache even if the call fails. The mock keeps `users` and
+  `sessions`: `/me` answers for the token's user, and a request without a token acts
+  as the demo user, because there are no route guards yet. Login only checks that
+  the email has an account (demo: `john@example.com`); passwords aren't checked. The
+  Google/GitHub buttons are still simulated. Tests clear `localStorage` after each
+  test.

@@ -1,7 +1,6 @@
 import { formatDistanceToNow } from "date-fns"
 import {
   CalendarIcon,
-  ClockIcon,
   IndianRupeeIcon,
   MailIcon,
   MapPinIcon,
@@ -13,9 +12,11 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-import { initials, sourceLabel, stageLabel } from "./data"
+import { ACTIVITY_ICONS, initials, sourceLabel, stageLabel } from "./data"
 import { aiSuggestedReply } from "./send-whatsapp-dialog"
 import type { Lead } from "./data"
+import { useListLeadActivities } from "@/api/generated/leads/leads"
+import { QueryError } from "@/components/query-error"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/item"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Sheet,
   SheetContent,
@@ -91,20 +93,55 @@ function ContactRow({
   )
 }
 
-function timeline(lead: Lead) {
-  return [
-    {
-      action: `Lead captured via ${sourceLabel(lead.source)}`,
-      time: formatDistanceToNow(lead.addedAt, { addSuffix: true }),
-      icon: ClockIcon,
-    },
-    {
-      action: "WhatsApp message sent",
-      time: "1 hour ago",
-      icon: MessageSquareIcon,
-    },
-    { action: "Email follow-up sent", time: "30 mins ago", icon: MailIcon },
-  ]
+/** The lead's activity timeline, loaded while the sheet is open. */
+function ActivityTimeline({ leadId }: { leadId: string }) {
+  const activitiesQuery = useListLeadActivities(leadId)
+
+  if (activitiesQuery.isPending)
+    return (
+      <div
+        className="flex flex-col gap-2"
+        aria-busy="true"
+        aria-label="Loading activity"
+      >
+        {Array.from({ length: 3 }, (_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    )
+  if (activitiesQuery.isError)
+    return (
+      <QueryError
+        title="Couldn't load activity"
+        error={activitiesQuery.error}
+        onRetry={() => void activitiesQuery.refetch()}
+      />
+    )
+  return (
+    <ItemGroup>
+      {activitiesQuery.data.map((activity) => {
+        const Icon = ACTIVITY_ICONS[activity.type]
+        return (
+          <Item key={activity.id} size="xs">
+            <ItemMedia variant="icon">
+              <Icon />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>{activity.title}</ItemTitle>
+              <ItemDescription>
+                {[
+                  activity.description,
+                  formatDistanceToNow(activity.createdAt, { addSuffix: true }),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </ItemDescription>
+            </ItemContent>
+          </Item>
+        )
+      })}
+    </ItemGroup>
+  )
 }
 
 export function LeadDetailSheet({
@@ -202,19 +239,7 @@ export function LeadDetailSheet({
                 <Separator />
 
                 <Section title="Activity Timeline">
-                  <ItemGroup className="gap-1">
-                    {timeline(lead).map((activity) => (
-                      <Item key={activity.action} size="xs">
-                        <ItemMedia variant="icon">
-                          <activity.icon />
-                        </ItemMedia>
-                        <ItemContent>
-                          <ItemTitle>{activity.action}</ItemTitle>
-                          <ItemDescription>{activity.time}</ItemDescription>
-                        </ItemContent>
-                      </Item>
-                    ))}
-                  </ItemGroup>
+                  <ActivityTimeline leadId={lead.id} />
                 </Section>
 
                 <Alert>

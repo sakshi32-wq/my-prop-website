@@ -1,10 +1,13 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { PencilIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { AudienceFields } from "./audience-fields"
 import { BasicsFields } from "./basics-fields"
 import {
+  toCampaignInput,
+  toDraft,
   validateAudience,
   validateBasics,
   validateMessage,
@@ -14,10 +17,13 @@ import type {
   Campaign,
   CampaignDraft,
   CampaignStatus,
+  CampaignUpdate,
   DraftErrors,
 } from "./campaign-data"
 import { MessageFields } from "./message-fields"
+import { optimisticCampaignUpdate } from "./optimistic"
 import { ScheduleFields } from "./schedule-fields"
+import { useUpdateCampaign } from "@/api/generated/campaigns/campaigns"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -43,13 +49,19 @@ export function EditCampaignDialog({
   campaign,
   open,
   onOpenChange,
-  onSave,
 }: {
   campaign: Campaign | undefined
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (campaign: Campaign) => void
 }) {
+  const queryClient = useQueryClient()
+  const updateCampaign = useUpdateCampaign({
+    mutation: {
+      ...optimisticCampaignUpdate(queryClient),
+      onSuccess: () => toast.success("Campaign updated successfully"),
+    },
+  })
+
   return (
     <Dialog open={open && !!campaign} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-3xl">
@@ -67,8 +79,8 @@ export function EditCampaignDialog({
           <EditForm
             key={campaign.id}
             campaign={campaign}
-            onSave={(updated) => {
-              onSave(updated)
+            onSave={(data) => {
+              updateCampaign.mutate({ campaignId: campaign.id, data })
               onOpenChange(false)
             }}
           />
@@ -83,9 +95,9 @@ function EditForm({
   onSave,
 }: {
   campaign: Campaign
-  onSave: (campaign: Campaign) => void
+  onSave: (data: CampaignUpdate) => void
 }) {
-  const [draft, setDraft] = useState<CampaignDraft>(() => ({ ...campaign }))
+  const [draft, setDraft] = useState<CampaignDraft>(() => toDraft(campaign))
   const [status, setStatus] = useState<CampaignStatus>(campaign.status)
   const [tab, setTab] = useState<TabValue>("basic")
   const [showErrors, setShowErrors] = useState(false)
@@ -110,7 +122,7 @@ function EditForm({
       toast.error(`Please fix the errors in ${invalid.label}`)
       return
     }
-    onSave({ ...campaign, ...draft, name: draft.name.trim(), status })
+    onSave(toCampaignInput(draft, status))
   }
 
   return (

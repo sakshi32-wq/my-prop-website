@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function CampaignStats({ campaigns }: { campaigns: Campaign[] }) {
   const totals = campaigns.reduce(
@@ -68,6 +69,16 @@ export function CampaignStats({ campaigns }: { campaigns: Campaign[] }) {
             <CardDescription className="text-xs">{stat.hint}</CardDescription>
           </CardHeader>
         </Card>
+      ))}
+    </div>
+  )
+}
+
+export function CampaignStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }, (_, i) => (
+        <Skeleton key={i} className="h-28 rounded-xl" />
       ))}
     </div>
   )

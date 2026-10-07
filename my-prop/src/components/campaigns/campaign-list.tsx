@@ -20,6 +20,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { ItemGroup } from "@/components/ui/item"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function CampaignList({
   campaigns,
@@ -72,6 +73,22 @@ export function CampaignList({
             ))}
           </ItemGroup>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+export function CampaignListSkeleton() {
+  return (
+    <Card aria-busy="true" aria-label="Loading campaigns">
+      <CardHeader>
+        <CardTitle>All Campaigns</CardTitle>
+        <Skeleton className="h-4 w-40" />
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {Array.from({ length: 3 }, (_, i) => (
+          <Skeleton key={i} className="h-48 w-full rounded-lg" />
+        ))}
       </CardContent>
     </Card>
   )

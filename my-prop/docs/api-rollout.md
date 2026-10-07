@@ -21,7 +21,7 @@ reference implementation for everything below.
 | # | Domain (tag) | Source of mock state today | Status |
 |---|---|---|---|
 | 0 | leads | `leads/leads-page.tsx`, `dashboard/recent-leads-card.tsx` | ✅ done (pilot) |
-| 1 | campaigns | `campaigns/campaigns-page.tsx` (`createMockCampaigns`) | ⬜ |
+| 1 | campaigns | `campaigns/campaigns-page.tsx` (`createMockCampaigns`) | ✅ done |
 | 2 | team | `settings/team-tab.tsx` (`INITIAL_MEMBERS`) | ⬜ |
 | 3 | domains | `settings/domains-tab.tsx` (`INITIAL_DOMAINS`) | ⬜ |
 | 4 | api-keys | `settings/api-keys-card.tsx` (`INITIAL_KEYS`) | ⬜ |
@@ -58,8 +58,10 @@ Follow the Leads files as the template for each step.
 6. **Components**:
    - Lists use `useList…(params, { query: { placeholderData: keepPreviousData } })`, a
      `Skeleton` while pending, and `QueryError` (Alert + Retry) on error.
-   - Updates and deletes are optimistic: helpers in `<domain>/optimistic.ts` built on
-     `patchQueries`/`rollback` from `src/api/optimistic.ts`.
+   - Updates and deletes are optimistic: `<domain>/optimistic.ts` wraps the generic
+     `optimisticPatch` / `optimisticRemove` from `src/api/optimistic.ts` (see
+     `campaigns/optimistic.ts`). `optimisticRemove` puts the deleted item in the
+     context as `removed`, so `onSuccess` can name it.
    - Creates aren't optimistic: the button shows a `Spinner` while pending, then the
      dialog closes and the toast shows in `onSuccess`.
    - Success toasts go in `onSuccess`. Errors are toasted by the MutationCache.
@@ -79,3 +81,11 @@ Follow the Leads files as the template for each step.
 - `yarn check` runs Yarn 1's built-in command. Use `yarn run check` for Prettier.
 - MSW 3 uses `onUnhandledFrame`, not `onUnhandledRequest`.
 - Mock data lives in page memory: a full reload resets it to the seed data.
+- **Dates:** the API uses ISO strings (`date-time`, or `date` for calendar-only
+  values). If a form needs `Date` objects, keep a UI draft type derived from the
+  generated input type and convert at the boundary (`toDraft` / `toCampaignInput` in
+  `campaigns/campaign-data.ts`).
+- **campaigns:** the client sends the launch `status` (`scheduled` vs `active`), because
+  the date and time are local with no timezone. A real backend may want a
+  `scheduledAt` date-time and decide the status itself. The Automation Builder tab is
+  still local state; it's a candidate for an `automations` tag later.

@@ -34,6 +34,17 @@ export default defineConfig({
                 { query: "getLead", params: ["leadId"] },
               ],
             },
+            {
+              onMutations: ["createCampaign"],
+              invalidates: ["listCampaigns"],
+            },
+            {
+              onMutations: ["updateCampaign", "deleteCampaign"],
+              invalidates: [
+                "listCampaigns",
+                { query: "getCampaign", params: ["campaignId"] },
+              ],
+            },
           ],
         },
       },

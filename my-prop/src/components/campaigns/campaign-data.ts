@@ -1,40 +1,80 @@
-import { addDays, format, isPast, isToday, isTomorrow } from "date-fns"
+import {
+  addDays,
+  format,
+  isPast,
+  isToday,
+  isTomorrow,
+  parseISO,
+  subDays,
+} from "date-fns"
 import { MailIcon, MessageSquareIcon, SmartphoneIcon } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-export type Channel = "WhatsApp" | "Email" | "SMS"
-export type CampaignStatus = "active" | "paused" | "scheduled"
-export type ScheduleType = "immediate" | "scheduled" | "recurring" | "triggered"
-export type Frequency = "daily" | "weekly" | "monthly"
+import type {
+  Campaign,
+  CampaignChannel,
+  CampaignFrequency,
+  CampaignInput,
+  CampaignStatus,
+} from "@/api/generated/model"
 
-/** Everything the user can edit about a campaign. */
-export type CampaignDraft = {
-  name: string
-  objective: string
-  type: Channel
-  audience: string[]
-  subject: string
-  message: string
-  aiTone: string
-  scheduleType: ScheduleType
+export type {
+  Campaign,
+  CampaignChannel as Channel,
+  CampaignFrequency as Frequency,
+  CampaignInput,
+  CampaignScheduleType as ScheduleType,
+  CampaignStatus,
+  CampaignUpdate,
+} from "@/api/generated/model"
+
+/**
+ * Everything the user can edit about a campaign, as the forms hold it: the
+ * API's date-only `scheduleDate` string becomes a Date for the date picker.
+ */
+export type CampaignDraft = Omit<
+  Required<CampaignInput>,
+  "scheduleDate" | "status"
+> & {
   scheduleDate?: Date
-  scheduleTime: string
-  frequency: Frequency
-  triggerEvent: string
 }
 
-export type Campaign = CampaignDraft & {
-  id: number
+/** API campaign → form draft. */
+export function toDraft(campaign: Campaign): CampaignDraft {
+  const { scheduleDate } = campaign
+  return {
+    name: campaign.name,
+    objective: campaign.objective,
+    type: campaign.type,
+    audience: campaign.audience,
+    subject: campaign.subject,
+    message: campaign.message,
+    aiTone: campaign.aiTone,
+    scheduleType: campaign.scheduleType,
+    scheduleDate: scheduleDate ? parseISO(scheduleDate) : undefined,
+    scheduleTime: campaign.scheduleTime,
+    frequency: campaign.frequency,
+    triggerEvent: campaign.triggerEvent,
+  }
+}
+
+/** Form draft → API body for create or update. */
+export function toCampaignInput(
+  draft: CampaignDraft,
   status: CampaignStatus
-  sent: number
-  delivered: number
-  read: number
-  replied: number
-  leads: number
+): Required<CampaignInput> {
+  return {
+    ...draft,
+    name: draft.name.trim(),
+    scheduleDate: draft.scheduleDate
+      ? format(draft.scheduleDate, "yyyy-MM-dd")
+      : null,
+    status,
+  }
 }
 
 export const CHANNELS: {
-  value: Channel
+  value: CampaignChannel
   label: string
   description: string
   icon: LucideIcon
@@ -59,7 +99,7 @@ export const CHANNELS: {
   },
 ]
 
-export function channelIcon(type: Channel): LucideIcon {
+export function channelIcon(type: CampaignChannel): LucideIcon {
   return CHANNELS.find((c) => c.value === type)?.icon ?? MessageSquareIcon
 }
 
@@ -156,7 +196,7 @@ export const TRIGGER_EVENTS = [
   { value: "stage-change", label: "Pipeline Stage Change" },
 ]
 
-export const FREQUENCIES: { value: Frequency; label: string }[] = [
+export const FREQUENCIES: { value: CampaignFrequency; label: string }[] = [
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
@@ -218,7 +258,7 @@ export function scheduleLabel(campaign: Campaign) {
   if (campaign.status === "paused") return "Paused"
   if (campaign.status === "active" && campaign.scheduleType === "immediate")
     return "Running now"
-  return describeSchedule(campaign)
+  return describeSchedule(toDraft(campaign))
 }
 
 /** Status a campaign gets when it is launched or resumed. */
@@ -285,79 +325,84 @@ export function validateSchedule(d: CampaignDraft): DraftErrors {
   return errors
 }
 
-export function createMockCampaigns(): Campaign[] {
-  const base = emptyDraft()
-  return [
-    {
-      ...base,
-      id: 1,
-      name: "Skyline Heights Launch",
-      objective: "leads",
-      type: "WhatsApp",
-      status: "active",
-      audience: ["hot", "skyline"],
-      message: MESSAGE_TEMPLATES[0].content,
-      scheduleType: "immediate",
-      sent: 1245,
-      delivered: 1198,
-      read: 892,
-      replied: 234,
-      leads: 45,
-    },
-    {
-      ...base,
-      id: 2,
-      name: "Green Valley Promotion",
-      objective: "awareness",
-      type: "Email",
-      status: "active",
-      audience: ["warm", "green-valley"],
-      subject: "Green Valley: limited time offer on select units",
-      message: MESSAGE_TEMPLATES[2].content,
-      scheduleType: "recurring",
-      frequency: "daily",
-      scheduleTime: "10:00",
-      sent: 3456,
-      delivered: 3289,
-      read: 1456,
-      replied: 89,
-      leads: 28,
-    },
-    {
-      ...base,
-      id: 3,
-      name: "Marina Bay Follow-up",
-      objective: "nurture",
-      type: "WhatsApp",
-      status: "paused",
-      audience: ["all"],
-      message: MESSAGE_TEMPLATES[3].content,
-      scheduleType: "triggered",
-      triggerEvent: "no-response",
-      sent: 567,
-      delivered: 542,
-      read: 398,
-      replied: 156,
-      leads: 32,
-    },
-    {
-      ...base,
-      id: 4,
-      name: "Weekend Site Visit",
-      objective: "sitevisit",
-      type: "Email",
-      status: "scheduled",
-      audience: ["hot", "warm"],
-      subject: "Your exclusive site visit this weekend",
-      message: MESSAGE_TEMPLATES[1].content,
-      scheduleType: "scheduled",
-      scheduleDate: addDays(new Date(), 1),
-      scheduleTime: "09:00",
-      sent: 0,
-      delivered: 0,
-      read: 0,
-      replied: 0,
-      leads: 0,
-    },
-  ]
-}
+const now = new Date()
+const base = toCampaignInput(emptyDraft(), "active")
+
+/** Seed data for the mock API (src/mocks/db.ts). */
+export const DEMO_CAMPAIGNS: Array<Campaign> = [
+  {
+    ...base,
+    id: "a3d2f6c1-5b7e-4c1a-9f3e-2d8b6a4c0e11",
+    name: "Skyline Heights Launch",
+    objective: "leads",
+    type: "WhatsApp",
+    status: "active",
+    audience: ["hot", "skyline"],
+    message: MESSAGE_TEMPLATES[0].content,
+    scheduleType: "immediate",
+    sent: 1245,
+    delivered: 1198,
+    read: 892,
+    replied: 234,
+    leads: 45,
+    createdAt: subDays(now, 30).toISOString(),
+  },
+  {
+    ...base,
+    id: "b7e4a2d9-3c6f-4e8b-a1d5-9f2c7b3e5a22",
+    name: "Green Valley Promotion",
+    objective: "awareness",
+    type: "Email",
+    status: "active",
+    audience: ["warm", "green-valley"],
+    subject: "Green Valley: limited time offer on select units",
+    message: MESSAGE_TEMPLATES[2].content,
+    scheduleType: "recurring",
+    frequency: "daily",
+    scheduleTime: "10:00",
+    sent: 3456,
+    delivered: 3289,
+    read: 1456,
+    replied: 89,
+    leads: 28,
+    createdAt: subDays(now, 21).toISOString(),
+  },
+  {
+    ...base,
+    id: "c9f1b3e6-7a2d-4f5c-b8e3-1a6d4c9f7b33",
+    name: "Marina Bay Follow-up",
+    objective: "nurture",
+    type: "WhatsApp",
+    status: "paused",
+    audience: ["all"],
+    message: MESSAGE_TEMPLATES[3].content,
+    scheduleType: "triggered",
+    triggerEvent: "no-response",
+    sent: 567,
+    delivered: 542,
+    read: 398,
+    replied: 156,
+    leads: 32,
+    createdAt: subDays(now, 14).toISOString(),
+  },
+  {
+    ...base,
+    id: "d2a8c5f3-9e1b-4a6d-8c7f-3b5e2a1d9c44",
+    name: "Weekend Site Visit",
+    objective: "sitevisit",
+    type: "Email",
+    status: "scheduled",
+    audience: ["hot", "warm"],
+    subject: "Your exclusive site visit this weekend",
+    message: MESSAGE_TEMPLATES[1].content,
+    scheduleType: "scheduled",
+    scheduleDate: format(addDays(now, 1), "yyyy-MM-dd"),
+    scheduleTime: "09:00",
+    sent: 0,
+    delivered: 0,
+    read: 0,
+    replied: 0,
+    leads: 0,
+    createdAt: subDays(now, 2).toISOString(),
+  },
+]

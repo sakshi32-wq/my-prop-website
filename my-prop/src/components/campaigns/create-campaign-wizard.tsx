@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { toast } from "sonner"
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -10,8 +11,11 @@ import {
 import { AudienceFields } from "./audience-fields"
 import { BasicsFields } from "./basics-fields"
 import {
+  describeSchedule,
   emptyDraft,
   statusFor,
+  toCampaignInput,
+  toDraft,
   validateAudience,
   validateBasics,
   validateMessage,
@@ -21,6 +25,7 @@ import type { Campaign, CampaignDraft, DraftErrors } from "./campaign-data"
 import { CampaignReview } from "./campaign-review"
 import { MessageFields } from "./message-fields"
 import { ScheduleFields } from "./schedule-fields"
+import { useCreateCampaign } from "@/api/generated/campaigns/campaigns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -32,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
+import { Spinner } from "@/components/ui/spinner"
 
 const STEPS: {
   label: string
@@ -74,28 +80,51 @@ const STEPS: {
 export function CreateCampaignWizard({
   open,
   onOpenChange,
-  onLaunch,
+  onLaunched,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onLaunch: (campaign: Campaign) => void
+  onLaunched?: (campaign: Campaign) => void
 }) {
+  const createCampaign = useCreateCampaign({
+    mutation: {
+      onSuccess: (campaign) => {
+        toast.success(
+          campaign.status === "scheduled"
+            ? `"${campaign.name}" scheduled`
+            : `"${campaign.name}" launched`,
+          { description: describeSchedule(toDraft(campaign)) }
+        )
+        onOpenChange(false)
+        onLaunched?.(campaign)
+      },
+    },
+  })
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-2xl">
         {/* Content unmounts on close, so the wizard always restarts fresh. */}
         <WizardBody
-          onLaunch={(campaign) => {
-            onLaunch(campaign)
-            onOpenChange(false)
-          }}
+          pending={createCampaign.isPending}
+          onLaunch={(draft) =>
+            createCampaign.mutate({
+              data: toCampaignInput(draft, statusFor(draft)),
+            })
+          }
         />
       </DialogContent>
     </Dialog>
   )
 }
 
-function WizardBody({ onLaunch }: { onLaunch: (campaign: Campaign) => void }) {
+function WizardBody({
+  pending,
+  onLaunch,
+}: {
+  pending: boolean
+  onLaunch: (draft: CampaignDraft) => void
+}) {
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<CampaignDraft>(emptyDraft)
   const [showErrors, setShowErrors] = useState(false)
@@ -131,17 +160,7 @@ function WizardBody({ onLaunch }: { onLaunch: (campaign: Campaign) => void }) {
       setShowErrors(true)
       return
     }
-    onLaunch({
-      ...draft,
-      name: draft.name.trim(),
-      id: Date.now(),
-      status: statusFor(draft),
-      sent: 0,
-      delivered: 0,
-      read: 0,
-      replied: 0,
-      leads: 0,
-    })
+    onLaunch(draft)
   }
 
   return (
@@ -219,10 +238,14 @@ function WizardBody({ onLaunch }: { onLaunch: (campaign: Campaign) => void }) {
           <ChevronLeftIcon data-icon="inline-start" />
           Back
         </Button>
-        <Button onClick={next}>
+        <Button onClick={next} disabled={pending}>
           {isLast ? (
             <>
-              <SendIcon data-icon="inline-start" />
+              {pending ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <SendIcon data-icon="inline-start" />
+              )}
               Launch Campaign
             </>
           ) : (

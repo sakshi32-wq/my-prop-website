@@ -1,21 +1,28 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { PlusIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { AutomationBuilder } from "./automation/automation-builder"
-import {
-  createMockCampaigns,
-  describeSchedule,
-  statusFor,
-} from "./campaign-data"
+import { statusFor, toDraft } from "./campaign-data"
 import type { Campaign } from "./campaign-data"
 import type { CampaignAction } from "./campaign-item"
-import { CampaignList } from "./campaign-list"
-import { CampaignStats } from "./campaign-stats"
+import { CampaignList, CampaignListSkeleton } from "./campaign-list"
+import { CampaignStats, CampaignStatsSkeleton } from "./campaign-stats"
 import { CreateCampaignWizard } from "./create-campaign-wizard"
 import { EditCampaignDialog } from "./edit-campaign-dialog"
+import {
+  optimisticCampaignDelete,
+  optimisticCampaignUpdate,
+} from "./optimistic"
 import { ViewCampaignDialog } from "./view-campaign-dialog"
+import {
+  useDeleteCampaign,
+  useListCampaigns,
+  useUpdateCampaign,
+} from "@/api/generated/campaigns/campaigns"
 import { PageHeader } from "@/components/page-header"
+import { QueryError } from "@/components/query-error"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,13 +39,34 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 type OpenDialog = "view" | "edit" | "delete" | null
 
 export function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(createMockCampaigns)
+  const queryClient = useQueryClient()
+  const campaignsQuery = useListCampaigns()
+  const campaigns = campaignsQuery.data ?? []
   const [view, setView] = useState("list")
   const [wizardOpen, setWizardOpen] = useState(false)
   const [dialog, setDialog] = useState<OpenDialog>(null)
   // The id is kept after closing so dialogs can animate out with content.
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = campaigns.find((c) => c.id === selectedId)
+
+  const toggleStatus = useUpdateCampaign({
+    mutation: {
+      ...optimisticCampaignUpdate(queryClient),
+      onSuccess: (campaign) =>
+        toast.success(
+          campaign.status === "paused"
+            ? `"${campaign.name}" paused`
+            : `"${campaign.name}" resumed`
+        ),
+    },
+  })
+  const deleteCampaign = useDeleteCampaign({
+    mutation: {
+      ...optimisticCampaignDelete(queryClient),
+      onSuccess: (_data, _variables, context) =>
+        toast.success(`"${context.removed?.name ?? "Campaign"}" deleted`),
+    },
+  })
 
   function open(kind: Exclude<OpenDialog, null>, campaign: Campaign) {
     setSelectedId(campaign.id)
@@ -49,44 +77,18 @@ export function CampaignsPage() {
     if (!isOpen) setDialog(null)
   }
 
-  function toggleStatus(campaign: Campaign) {
-    const status = campaign.status === "paused" ? statusFor(campaign) : "paused"
-    setCampaigns((prev) =>
-      prev.map((c) => (c.id === campaign.id ? { ...c, status } : c))
-    )
-    toast.success(
-      status === "paused"
-        ? `"${campaign.name}" paused`
-        : `"${campaign.name}" resumed`
-    )
-  }
-
   function handleAction(action: CampaignAction, campaign: Campaign) {
-    if (action === "toggle") toggleStatus(campaign)
-    else open(action, campaign)
-  }
-
-  function handleLaunch(campaign: Campaign) {
-    setCampaigns((prev) => [campaign, ...prev])
-    setView("list")
-    toast.success(
-      campaign.status === "scheduled"
-        ? `"${campaign.name}" scheduled`
-        : `"${campaign.name}" launched`,
-      { description: describeSchedule(campaign) }
-    )
-  }
-
-  function handleSave(updated: Campaign) {
-    setCampaigns((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
-    toast.success("Campaign updated successfully")
+    if (action === "toggle") {
+      const status =
+        campaign.status === "paused" ? statusFor(toDraft(campaign)) : "paused"
+      toggleStatus.mutate({ campaignId: campaign.id, data: { status } })
+    } else open(action, campaign)
   }
 
   function handleDelete() {
     if (!selected) return
-    setCampaigns((prev) => prev.filter((c) => c.id !== selected.id))
+    deleteCampaign.mutate({ campaignId: selected.id })
     setDialog(null)
-    toast.success(`"${selected.name}" deleted`)
   }
 
   return (
@@ -109,12 +111,27 @@ export function CampaignsPage() {
       />
 
       <TabsContent value="list" className="flex flex-col gap-6">
-        <CampaignStats campaigns={campaigns} />
-        <CampaignList
-          campaigns={campaigns}
-          onAction={handleAction}
-          onCreate={() => setWizardOpen(true)}
-        />
+        {campaignsQuery.isPending ? (
+          <>
+            <CampaignStatsSkeleton />
+            <CampaignListSkeleton />
+          </>
+        ) : campaignsQuery.isError ? (
+          <QueryError
+            title="Couldn't load campaigns"
+            error={campaignsQuery.error}
+            onRetry={() => void campaignsQuery.refetch()}
+          />
+        ) : (
+          <>
+            <CampaignStats campaigns={campaigns} />
+            <CampaignList
+              campaigns={campaigns}
+              onAction={handleAction}
+              onCreate={() => setWizardOpen(true)}
+            />
+          </>
+        )}
       </TabsContent>
 
       {/* Kept mounted so the automation in progress survives tab switches. */}
@@ -129,7 +146,7 @@ export function CampaignsPage() {
       <CreateCampaignWizard
         open={wizardOpen}
         onOpenChange={setWizardOpen}
-        onLaunch={handleLaunch}
+        onLaunched={() => setView("list")}
       />
 
       <ViewCampaignDialog
@@ -143,7 +160,6 @@ export function CampaignsPage() {
         campaign={selected}
         open={dialog === "edit"}
         onOpenChange={closeDialog}
-        onSave={handleSave}
       />
 
       <AlertDialog open={dialog === "delete"} onOpenChange={closeDialog}>

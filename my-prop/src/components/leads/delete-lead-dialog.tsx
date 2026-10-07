@@ -32,7 +32,7 @@ export function DeleteLeadDialog({
     mutation: {
       ...optimisticLeadDelete(queryClient),
       onSuccess: (_data, _variables, context) =>
-        toast.success("Lead deleted", { description: context.lead?.name }),
+        toast.success("Lead deleted", { description: context.removed?.name }),
     },
   })
 

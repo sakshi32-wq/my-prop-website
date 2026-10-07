@@ -8,12 +8,21 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./campaign.ts"
+export * from "./campaignChannel.ts"
+export * from "./campaignFrequency.ts"
+export * from "./campaignInput.ts"
+export * from "./campaignMetrics.ts"
+export * from "./campaignScheduleType.ts"
+export * from "./campaignStatus.ts"
+export * from "./campaignUpdate.ts"
 export * from "./error.ts"
 export * from "./lead.ts"
 export * from "./leadInput.ts"
 export * from "./leadSource.ts"
 export * from "./leadStage.ts"
 export * from "./leadUpdate.ts"
+export * from "./listCampaignsParams.ts"
 export * from "./listLeadsParams.ts"
 export * from "./notFoundResponse.ts"
 export * from "./unauthorizedResponse.ts"

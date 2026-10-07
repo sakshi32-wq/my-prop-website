@@ -12,6 +12,8 @@ security:
 tags:
   - name: leads
     description: CRM leads and their pipeline stage
+  - name: campaigns
+    description: WhatsApp, Email and SMS marketing campaigns
 
 paths:
   /leads:
@@ -178,6 +180,106 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      summary: List campaigns, newest first
+      parameters:
+        - name: status
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/CampaignStatus"
+      responses:
+        "200":
+          description: Matching campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createCampaign
+      tags: [campaigns]
+      summary: Create (launch or schedule) a campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Created campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /campaigns/{campaignId}:
+    parameters:
+      - $ref: "#/components/parameters/CampaignId"
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      summary: Get a campaign
+      responses:
+        "200":
+          description: The campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateCampaign
+      tags: [campaigns]
+      summary: Update some fields of a campaign (also pauses and resumes it)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignUpdate"
+      responses:
+        "200":
+          description: Updated campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      operationId: deleteCampaign
+      tags: [campaigns]
+      summary: Delete a campaign
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -185,6 +287,13 @@ components:
       scheme: bearer
 
   parameters:
+    CampaignId:
+      name: campaignId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     LeadId:
       name: leadId
       in: path
@@ -322,3 +431,180 @@ components:
         addedAt:
           type: string
           format: date-time
+
+    CampaignChannel:
+      type: string
+      enum: [WhatsApp, Email, SMS]
+
+    CampaignStatus:
+      type: string
+      enum: [active, paused, scheduled]
+
+    CampaignScheduleType:
+      type: string
+      enum: [immediate, scheduled, recurring, triggered]
+
+    CampaignFrequency:
+      type: string
+      enum: [daily, weekly, monthly]
+
+    CampaignInput:
+      type: object
+      description: |
+        Fields a client sets when creating a campaign. The client sends the
+        status it launches with (scheduled or active); it defaults to active.
+      required: [name, type, audience, message, scheduleType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        objective:
+          type: string
+          description: One of the objective option values, or empty.
+        type:
+          $ref: "#/components/schemas/CampaignChannel"
+        audience:
+          type: array
+          description: Audience segment ids.
+          items:
+            type: string
+        subject:
+          type: string
+          description: Required for Email campaigns.
+        message:
+          type: string
+        aiTone:
+          type: string
+        scheduleType:
+          $ref: "#/components/schemas/CampaignScheduleType"
+        scheduleDate:
+          type: [string, "null"]
+          format: date
+          description: Local calendar date. Required when scheduleType is scheduled.
+        scheduleTime:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+          description: Local time as HH:mm (scheduled and recurring campaigns).
+        frequency:
+          $ref: "#/components/schemas/CampaignFrequency"
+        triggerEvent:
+          type: string
+          description: Required when scheduleType is triggered.
+        status:
+          $ref: "#/components/schemas/CampaignStatus"
+
+    CampaignUpdate:
+      type: object
+      description: Partial update. Omitted fields are left unchanged.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        objective:
+          type: string
+          description: One of the objective option values, or empty.
+        type:
+          $ref: "#/components/schemas/CampaignChannel"
+        audience:
+          type: array
+          description: Audience segment ids.
+          items:
+            type: string
+        subject:
+          type: string
+          description: Required for Email campaigns.
+        message:
+          type: string
+        aiTone:
+          type: string
+        scheduleType:
+          $ref: "#/components/schemas/CampaignScheduleType"
+        scheduleDate:
+          type: [string, "null"]
+          format: date
+          description: Local calendar date. Required when scheduleType is scheduled.
+        scheduleTime:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+          description: Local time as HH:mm (scheduled and recurring campaigns).
+        frequency:
+          $ref: "#/components/schemas/CampaignFrequency"
+        triggerEvent:
+          type: string
+          description: Required when scheduleType is triggered.
+        status:
+          $ref: "#/components/schemas/CampaignStatus"
+
+    CampaignMetrics:
+      type: object
+      required: [sent, delivered, read, replied, leads]
+      properties:
+        sent:
+          type: integer
+          minimum: 0
+        delivered:
+          type: integer
+          minimum: 0
+        read:
+          type: integer
+          minimum: 0
+        replied:
+          type: integer
+          minimum: 0
+        leads:
+          type: integer
+          minimum: 0
+
+    Campaign:
+      allOf:
+        - $ref: "#/components/schemas/CampaignMetrics"
+        - type: object
+          required:
+            [id, name, objective, type, audience, subject, message, aiTone, scheduleType, scheduleDate, scheduleTime, frequency, triggerEvent, status, createdAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+              minLength: 1
+              maxLength: 80
+            objective:
+              type: string
+              description: One of the objective option values, or empty.
+            type:
+              $ref: "#/components/schemas/CampaignChannel"
+            audience:
+              type: array
+              description: Audience segment ids.
+              items:
+                type: string
+            subject:
+              type: string
+              description: Required for Email campaigns.
+            message:
+              type: string
+            aiTone:
+              type: string
+            scheduleType:
+              $ref: "#/components/schemas/CampaignScheduleType"
+            scheduleDate:
+              type: [string, "null"]
+              format: date
+              description: Local calendar date. Required when scheduleType is scheduled.
+            scheduleTime:
+              type: string
+              pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+              description: Local time as HH:mm (scheduled and recurring campaigns).
+            frequency:
+              $ref: "#/components/schemas/CampaignFrequency"
+            triggerEvent:
+              type: string
+              description: Required when scheduleType is triggered.
+            status:
+              $ref: "#/components/schemas/CampaignStatus"
+            createdAt:
+              type: string
+              format: date-time

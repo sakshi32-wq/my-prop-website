@@ -1,3 +1,4 @@
+export * from "./account/account.ts"
 export * from "./api-keys/api-keys.ts"
 export * from "./campaigns/campaigns.ts"
 export * from "./domains/domains.ts"

@@ -1,5 +1,14 @@
-import { Fragment, useState } from "react"
+import { Fragment } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+
+import { NOTIFICATION_OPTIONS } from "./account-data"
+import { optimisticNotificationPreferences } from "./account-optimistic"
+import {
+  useGetNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from "@/api/generated/account/account"
+import { QueryError } from "@/components/query-error"
 
 import {
   Card,
@@ -16,49 +25,24 @@ import {
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 
-const PREFERENCES = [
-  {
-    id: "newLeads",
-    label: "New Lead Notifications",
-    description: "Get notified when you receive a new lead",
-    defaultEnabled: true,
-  },
-  {
-    id: "campaigns",
-    label: "Campaign Updates",
-    description: "Receive updates on your campaign performance",
-    defaultEnabled: true,
-  },
-  {
-    id: "whatsapp",
-    label: "WhatsApp Replies",
-    description: "Get notified when leads reply via WhatsApp",
-    defaultEnabled: true,
-  },
-  {
-    id: "weeklyReports",
-    label: "Weekly Reports",
-    description: "Receive weekly performance summary emails",
-    defaultEnabled: false,
-  },
-] as const
-
-type PreferenceId = (typeof PREFERENCES)[number]["id"]
-
 export function NotificationsCard() {
-  const [enabled, setEnabled] = useState<Record<PreferenceId, boolean>>(
-    () =>
-      Object.fromEntries(
-        PREFERENCES.map((pref) => [pref.id, pref.defaultEnabled])
-      ) as Record<PreferenceId, boolean>
-  )
-
-  function toggle(id: PreferenceId, label: string, checked: boolean) {
-    setEnabled((prev) => ({ ...prev, [id]: checked }))
-    toast.success(`${label} ${checked ? "enabled" : "disabled"}`)
-  }
+  const queryClient = useQueryClient()
+  const preferencesQuery = useGetNotificationPreferences()
+  const updatePreferences = useUpdateNotificationPreferences({
+    mutation: {
+      ...optimisticNotificationPreferences(queryClient),
+      onSuccess: (preferences, { data }) => {
+        const option = NOTIFICATION_OPTIONS.find((o) => o.id in data)
+        if (option)
+          toast.success(
+            `${option.label} ${preferences[option.id] ? "enabled" : "disabled"}`
+          )
+      },
+    },
+  })
 
   return (
     <Card>
@@ -69,28 +53,48 @@ export function NotificationsCard() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <FieldGroup>
-          {PREFERENCES.map((pref, index) => (
-            <Fragment key={pref.id}>
-              {index > 0 && <FieldSeparator />}
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldLabel htmlFor={`notify-${pref.id}`}>
-                    {pref.label}
-                  </FieldLabel>
-                  <FieldDescription>{pref.description}</FieldDescription>
-                </FieldContent>
-                <Switch
-                  id={`notify-${pref.id}`}
-                  checked={enabled[pref.id]}
-                  onCheckedChange={(checked) =>
-                    toggle(pref.id, pref.label, checked)
-                  }
-                />
-              </Field>
-            </Fragment>
-          ))}
-        </FieldGroup>
+        {preferencesQuery.isPending ? (
+          <div
+            className="flex flex-col gap-4"
+            aria-busy="true"
+            aria-label="Loading notification preferences"
+          >
+            {NOTIFICATION_OPTIONS.map((option) => (
+              <Skeleton key={option.id} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : preferencesQuery.isError ? (
+          <QueryError
+            title="Couldn't load your preferences"
+            error={preferencesQuery.error}
+            onRetry={() => void preferencesQuery.refetch()}
+          />
+        ) : (
+          <FieldGroup>
+            {NOTIFICATION_OPTIONS.map((pref, index) => (
+              <Fragment key={pref.id}>
+                {index > 0 && <FieldSeparator />}
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldLabel htmlFor={`notify-${pref.id}`}>
+                      {pref.label}
+                    </FieldLabel>
+                    <FieldDescription>{pref.description}</FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    id={`notify-${pref.id}`}
+                    checked={preferencesQuery.data[pref.id]}
+                    onCheckedChange={(checked) =>
+                      updatePreferences.mutate({
+                        data: { [pref.id]: checked },
+                      })
+                    }
+                  />
+                </Field>
+              </Fragment>
+            ))}
+          </FieldGroup>
+        )}
       </CardContent>
     </Card>
   )

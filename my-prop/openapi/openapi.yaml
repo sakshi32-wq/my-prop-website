@@ -26,6 +26,8 @@ tags:
     description: Property websites and their builder content
   - name: templates
     description: The website template library, including saved AI templates
+  - name: account
+    description: The signed-in user's profile, preferences and password
 
 paths:
   /leads:
@@ -839,6 +841,97 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /me:
+    get:
+      operationId: getMe
+      tags: [account]
+      summary: The signed-in user's profile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateMe
+      tags: [account]
+      summary: Update profile details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /me/notification-preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [account]
+      summary: Which notifications the user receives
+      responses:
+        "200":
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateNotificationPreferences
+      tags: [account]
+      summary: Turn notifications on or off (omitted ones are unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferencesUpdate"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /me/password:
+    post:
+      operationId: changePassword
+      tags: [account]
+      summary: Change the password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordChange"
+      responses:
+        "204":
+          description: Changed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1641,3 +1734,84 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    Profile:
+      type: object
+      required: [id, firstName, lastName, email, company, phone]
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        company:
+          type: string
+        phone:
+          type: string
+
+    ProfileUpdate:
+      type: object
+      description: Partial update. Omitted fields are left unchanged.
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+        lastName:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        company:
+          type: string
+        phone:
+          type: string
+
+    NotificationPreferences:
+      type: object
+      required: [newLeads, campaigns, whatsapp, weeklyReports]
+      properties:
+        newLeads:
+          type: boolean
+          description: A new lead arrives.
+        campaigns:
+          type: boolean
+          description: Campaign performance updates.
+        whatsapp:
+          type: boolean
+          description: A lead replies on WhatsApp.
+        weeklyReports:
+          type: boolean
+          description: Weekly performance summary email.
+
+    NotificationPreferencesUpdate:
+      type: object
+      properties:
+        newLeads:
+          type: boolean
+          description: A new lead arrives.
+        campaigns:
+          type: boolean
+          description: Campaign performance updates.
+        whatsapp:
+          type: boolean
+          description: A lead replies on WhatsApp.
+        weeklyReports:
+          type: boolean
+          description: Weekly performance summary email.
+
+    PasswordChange:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+        newPassword:
+          type: string
+          minLength: 8

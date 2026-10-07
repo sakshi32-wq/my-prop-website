@@ -6,6 +6,8 @@ import type {
   Domain,
   Integration,
   Lead,
+  NotificationPreferences,
+  Profile,
   TeamMember,
   Template,
   Website,
@@ -13,6 +15,10 @@ import type {
 } from "@/api/generated/model"
 import { DEMO_CAMPAIGNS } from "@/components/campaigns/campaign-data"
 import { DEMO_LEADS } from "@/components/leads/data"
+import {
+  DEMO_NOTIFICATION_PREFERENCES,
+  DEMO_PROFILE,
+} from "@/components/settings/account-data"
 import { DEMO_API_KEYS } from "@/components/settings/api-keys-data"
 import { DEMO_DOMAINS } from "@/components/settings/domains-data"
 import { DEMO_INTEGRATIONS } from "@/components/settings/integrations-data"
@@ -54,6 +60,21 @@ function createTable<TRow extends { id: string }>(seed: () => Array<TRow>) {
   }
 }
 
+/** A single record (e.g. the signed-in user's profile). */
+function createSingleton<TValue extends object>(seed: TValue) {
+  let value = structuredClone(seed)
+  return {
+    get: () => structuredClone(value),
+    update(patch: Partial<TValue>) {
+      value = { ...value, ...structuredClone(patch) }
+      return structuredClone(value)
+    },
+    reset() {
+      value = structuredClone(seed)
+    },
+  }
+}
+
 export const db = {
   leads: createTable<Lead>(() => DEMO_LEADS),
   campaigns: createTable<Campaign>(() => DEMO_CAMPAIGNS),
@@ -72,6 +93,10 @@ export const db = {
       savedAt: null,
     }))
   ),
+  profile: createSingleton<Profile>(DEMO_PROFILE),
+  notificationPreferences: createSingleton<NotificationPreferences>(
+    DEMO_NOTIFICATION_PREFERENCES
+  ),
   /** Restores every table to its seed data. Called after each test. */
   reset() {
     db.leads.reset()
@@ -83,5 +108,7 @@ export const db = {
     db.templates.reset()
     db.websites.reset()
     db.websiteContents.reset()
+    db.profile.reset()
+    db.notificationPreferences.reset()
   },
 }

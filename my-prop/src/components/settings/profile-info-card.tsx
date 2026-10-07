@@ -3,6 +3,9 @@ import { SaveIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { EMAIL_RE } from "./utils"
+import type { Profile as ProfileData } from "./account-data"
+import { useGetMe, useUpdateMe } from "@/api/generated/account/account"
+import { QueryError } from "@/components/query-error"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -19,14 +22,10 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
 
-type Profile = {
-  firstName: string
-  lastName: string
-  email: string
-  company: string
-  phone: string
-}
+type Profile = Omit<ProfileData, "id">
 
 type Errors = Partial<Record<keyof Profile, string>>
 
@@ -41,14 +40,59 @@ function validate(profile: Profile): Errors {
 }
 
 export function ProfileInfoCard() {
-  const [profile, setProfile] = useState<Profile>({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john@example.com",
-    company: "Acme Real Estate",
-    phone: "+91 98765 43210",
-  })
+  const meQuery = useGetMe()
+
+  if (meQuery.isSuccess) return <ProfileForm initial={meQuery.data} />
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profile Information</CardTitle>
+        <CardDescription>
+          Update your personal details and contact information.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {meQuery.isError ? (
+          <QueryError
+            title="Couldn't load your profile"
+            error={meQuery.error}
+            onRetry={() => void meQuery.refetch()}
+          />
+        ) : (
+          <div
+            className="flex flex-col gap-5"
+            aria-busy="true"
+            aria-label="Loading profile"
+          >
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/** Mounted once the profile has loaded, so the form starts from it. */
+function ProfileForm({ initial }: { initial: ProfileData }) {
+  const [profile, setProfile] = useState<Profile>(() => ({
+    firstName: initial.firstName,
+    lastName: initial.lastName,
+    email: initial.email,
+    company: initial.company,
+    phone: initial.phone,
+  }))
   const [submitted, setSubmitted] = useState(false)
+  const updateMe = useUpdateMe({
+    mutation: {
+      onSuccess: () =>
+        toast.success("Profile updated", {
+          description: "Your profile information has been saved.",
+        }),
+    },
+  })
   const errors = submitted ? validate(profile) : {}
 
   function update(key: keyof Profile) {
@@ -63,9 +107,7 @@ export function ProfileInfoCard() {
       toast.error("Please fix the highlighted fields.")
       return
     }
-    toast.success("Profile updated", {
-      description: "Your profile information has been saved.",
-    })
+    updateMe.mutate({ data: profile })
   }
 
   return (
@@ -141,8 +183,12 @@ export function ProfileInfoCard() {
           </FieldGroup>
         </CardContent>
         <CardFooter>
-          <Button type="submit">
-            <SaveIcon data-icon="inline-start" />
+          <Button type="submit" disabled={updateMe.isPending}>
+            {updateMe.isPending ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <SaveIcon data-icon="inline-start" />
+            )}
             Save Changes
           </Button>
         </CardFooter>

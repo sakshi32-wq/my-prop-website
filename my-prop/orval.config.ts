@@ -93,6 +93,14 @@ export default defineConfig({
               invalidates: ["listTemplates"],
             },
             {
+              onMutations: ["updateMe"],
+              invalidates: ["getMe"],
+            },
+            {
+              onMutations: ["updateNotificationPreferences"],
+              invalidates: ["getNotificationPreferences"],
+            },
+            {
               onMutations: ["saveWebsiteContent"],
               invalidates: [
                 "listWebsites",

@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { toast } from "sonner"
 
+import { useChangePassword } from "@/api/generated/account/account"
+
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -18,6 +20,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 
 const EMPTY = { current: "", next: "", confirm: "" }
 
@@ -41,6 +44,17 @@ export function SecurityCard() {
   const [values, setValues] = useState(EMPTY)
   const [submitted, setSubmitted] = useState(false)
   const errors = submitted ? validate(values) : {}
+  const changePassword = useChangePassword({
+    mutation: {
+      onSuccess: () => {
+        toast.success("Password updated", {
+          description: "Use your new password the next time you sign in.",
+        })
+        setValues(EMPTY)
+        setSubmitted(false)
+      },
+    },
+  })
 
   function update(key: keyof Passwords) {
     return (event: React.ChangeEvent<HTMLInputElement>) =>
@@ -51,11 +65,9 @@ export function SecurityCard() {
     event.preventDefault()
     setSubmitted(true)
     if (Object.keys(validate(values)).length > 0) return
-    toast.success("Password updated", {
-      description: "Use your new password the next time you sign in.",
+    changePassword.mutate({
+      data: { currentPassword: values.current, newPassword: values.next },
     })
-    setValues(EMPTY)
-    setSubmitted(false)
   }
 
   return (
@@ -118,7 +130,12 @@ export function SecurityCard() {
           </FieldGroup>
         </CardContent>
         <CardFooter>
-          <Button type="submit" variant="outline">
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={changePassword.isPending}
+          >
+            {changePassword.isPending && <Spinner data-icon="inline-start" />}
             Update Password
           </Button>
         </CardFooter>

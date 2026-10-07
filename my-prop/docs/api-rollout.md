@@ -28,7 +28,7 @@ reference implementation for everything below.
 | 5 | integrations | `settings/integrations-tab.tsx` (`INITIAL_CONNECTED`) | ✅ done |
 | 6 | websites | `routes/app.websites.tsx`, `dashboard/active-websites-card.tsx`, `builder/storage.ts` (localStorage) | ✅ done |
 | 7 | templates | `routes/app.templates.tsx` (`TEMPLATES`) | ✅ done |
-| 8 | profile | `settings/profile-info-card.tsx`, `notifications-card.tsx` | ⬜ |
+| 8 | profile (tag `account`) | `settings/profile-info-card.tsx`, `notifications-card.tsx`, `security-card.tsx`, `app-shell/user-menu.tsx` | ✅ done |
 | 9 | analytics | `analytics/*`, `dashboard/kpi-cards.tsx` and charts (read-only) | ⬜ |
 
 Out of scope for now (still simulated, see `docs/replication-plan.md`): auth, AI
@@ -143,3 +143,10 @@ Follow the Leads files as the template for each step.
 - **Dev noise (not an app bug):** when a browser session is killed mid-request, the
   TanStack devtools console pipe can echo the resulting error between client and
   server in a growing nested burst ("[Server] … [Server] …"). It stops by itself.
+- **account:** `GET`/`PATCH /me` back the profile form and the header's user menu,
+  so renaming yourself updates the header. Notification switches are optimistic
+  patches of one cached object, using `patchQueries` directly rather than the list
+  helpers. The password change is `POST /me/password`; the mock accepts any current
+  password because there's no real auth yet. Single-record mock state uses
+  `createSingleton` in `src/mocks/db.ts`. The team's "John Doe" owner row is a
+  separate team-member record and doesn't follow profile renames.

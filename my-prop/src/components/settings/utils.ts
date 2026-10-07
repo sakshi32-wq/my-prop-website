@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -45,28 +44,4 @@ export function randomToken(length: number) {
 
 export function maskSecret(secret: string, visiblePrefix = 8) {
   return `${secret.slice(0, visiblePrefix)}${"•".repeat(16)}${secret.slice(-4)}`
-}
-
-/**
- * Simulates a network request: `pending` is true for `delay` ms, then
- * `onDone` runs. The timer is cleared if the component unmounts.
- */
-export function useSimulatedRequest(delay = 1200) {
-  const [pending, setPending] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-
-  useEffect(() => () => clearTimeout(timer.current), [])
-
-  const run = useCallback(
-    (onDone: () => void) => {
-      setPending(true)
-      timer.current = setTimeout(() => {
-        setPending(false)
-        onDone()
-      }, delay)
-    },
-    [delay]
-  )
-
-  return [pending, run] as const
 }

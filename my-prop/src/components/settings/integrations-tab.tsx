@@ -1,110 +1,46 @@
-import { useState } from "react"
-import {
-  ChartColumnIcon,
-  CalendarIcon,
-  CreditCardIcon,
-  DatabaseIcon,
-  IndianRupeeIcon,
-  MailIcon,
-  MessageSquareIcon,
-  PhoneIcon,
-} from "lucide-react"
-import { toast } from "sonner"
-
 import { ApiKeysCard } from "./api-keys-card"
 import {
   ConfigurableIntegrationCard,
   IntegrationListCard,
 } from "./integration-cards"
-import type { IntegrationInfo } from "./integration-item"
-
-const INTEGRATIONS = {
-  whatsapp: {
-    id: "whatsapp",
-    name: "WhatsApp Business API",
-    description: "Auto-reply and follow up with leads on WhatsApp",
-    icon: MessageSquareIcon,
-  },
-  gmail: {
-    id: "gmail",
-    name: "Gmail",
-    description: "Send emails from your Gmail account",
-    icon: MailIcon,
-  },
-  outlook: {
-    id: "outlook",
-    name: "Outlook",
-    description: "Send emails from your Outlook account",
-    icon: MailIcon,
-  },
-  twilio: {
-    id: "twilio",
-    name: "Twilio SMS",
-    description: "Send SMS alerts and reminders",
-    icon: PhoneIcon,
-  },
-  googleCalendar: {
-    id: "googleCalendar",
-    name: "Google Calendar",
-    description: "Sync site visit appointments",
-    icon: CalendarIcon,
-  },
-  googleAnalytics: {
-    id: "googleAnalytics",
-    name: "Google Analytics",
-    description: "Track visitors across your websites",
-    icon: ChartColumnIcon,
-  },
-  razorpay: {
-    id: "razorpay",
-    name: "Razorpay",
-    description: "Collect booking amounts in INR",
-    icon: IndianRupeeIcon,
-  },
-  stripe: {
-    id: "stripe",
-    name: "Stripe",
-    description: "Accept international payments",
-    icon: CreditCardIcon,
-  },
-  salesforce: {
-    id: "salesforce",
-    name: "Salesforce",
-    description: "Sync leads to Salesforce",
-    icon: DatabaseIcon,
-  },
-  zoho: {
-    id: "zoho",
-    name: "Zoho CRM",
-    description: "Sync leads to Zoho CRM",
-    icon: DatabaseIcon,
-  },
-} satisfies Record<string, IntegrationInfo>
-
-const INITIAL_CONNECTED: Record<string, boolean> = {
-  whatsapp: true,
-  twilio: true,
-  googleAnalytics: true,
-  razorpay: true,
-}
+import { INTEGRATIONS } from "./integrations-data"
+import { useListIntegrations } from "@/api/generated/integrations/integrations"
+import { QueryError } from "@/components/query-error"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function IntegrationsTab() {
-  const [connected, setConnected] = useState(INITIAL_CONNECTED)
+  const integrationsQuery = useListIntegrations()
 
-  function handleConnectedChange(integration: IntegrationInfo, value: boolean) {
-    const set = (next: boolean) =>
-      setConnected((prev) => ({ ...prev, [integration.id]: next }))
-    set(value)
-    if (value) {
-      toast.success(`${integration.name} connected`)
-    } else {
-      toast(`${integration.name} disconnected`, {
-        action: { label: "Undo", onClick: () => set(true) },
-      })
-    }
+  if (integrationsQuery.isPending || integrationsQuery.isError) {
+    return (
+      <div className="flex flex-col gap-6">
+        {integrationsQuery.isPending ? (
+          <div
+            className="flex flex-col gap-6"
+            aria-busy="true"
+            aria-label="Loading integrations"
+          >
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-40 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <QueryError
+            title="Couldn't load integrations"
+            error={integrationsQuery.error}
+            onRetry={() => void integrationsQuery.refetch()}
+          />
+        )}
+        <ApiKeysCard />
+      </div>
+    )
   }
 
-  const connection = { connected, onConnectedChange: handleConnectedChange }
+  const connection = {
+    states: Object.fromEntries(
+      integrationsQuery.data.map((integration) => [integration.id, integration])
+    ),
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -117,12 +53,10 @@ export function IntegrationsTab() {
           {
             id: "number",
             label: "WhatsApp Business Number",
-            defaultValue: "+91 98765 43210",
           },
           {
             id: "apiKey",
             label: "API Key",
-            defaultValue: "wa_live_8Jd2kQ9xLm4Vt7Rb",
             secret: true,
           },
         ]}
@@ -142,13 +76,11 @@ export function IntegrationsTab() {
           {
             id: "sid",
             label: "Account SID",
-            defaultValue: "AC-demo-sid-not-real-5f3e",
             secret: true,
           },
           {
             id: "token",
             label: "Auth Token",
-            defaultValue: "9b1f7c3e5a2d8f4b6c0e1a9d7f3b5c2e",
             secret: true,
           },
         ]}
@@ -168,7 +100,6 @@ export function IntegrationsTab() {
           {
             id: "trackingId",
             label: "Tracking ID",
-            defaultValue: "G-XXXXXXXXXX",
             placeholder: "G-XXXXXXXXXX",
           },
         ]}

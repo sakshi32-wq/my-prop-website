@@ -1,6 +1,12 @@
-import type { LucideIcon } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
-import { useSimulatedRequest } from "./utils"
+import { optimisticIntegrationDisconnect } from "./integrations-optimistic"
+import type { Integration, IntegrationInfo } from "./integrations-data"
+import {
+  useConnectIntegration,
+  useDisconnectIntegration,
+} from "@/api/generated/integrations/integrations"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,23 +19,35 @@ import {
 } from "@/components/ui/item"
 import { Spinner } from "@/components/ui/spinner"
 
-export type IntegrationInfo = {
-  id: string
-  name: string
-  description: string
-  icon: LucideIcon
-}
-
+/** One integration with its own connect/disconnect requests. */
 export function IntegrationItem({
   integration,
-  connected,
-  onConnectedChange,
+  state,
 }: {
   integration: IntegrationInfo
-  connected: boolean
-  onConnectedChange: (connected: boolean) => void
+  state: Integration | undefined
 }) {
-  const [connecting, connect] = useSimulatedRequest(1000)
+  const queryClient = useQueryClient()
+  const integrationId = integration.id
+  // Connecting can fail (e.g. a rejected OAuth grant), so it isn't optimistic.
+  const connect = useConnectIntegration({
+    mutation: {
+      onSuccess: () => toast.success(`${integration.name} connected`),
+    },
+  })
+  const disconnect = useDisconnectIntegration({
+    mutation: {
+      ...optimisticIntegrationDisconnect(queryClient),
+      onSuccess: () =>
+        toast(`${integration.name} disconnected`, {
+          action: {
+            label: "Undo",
+            onClick: () => connect.mutate({ integrationId }),
+          },
+        }),
+    },
+  })
+  const connected = !!state?.connected
   const Icon = integration.icon
 
   return (
@@ -51,7 +69,8 @@ export function IntegrationItem({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onConnectedChange(false)}
+            aria-label={`Disconnect ${integration.name}`}
+            onClick={() => disconnect.mutate({ integrationId })}
           >
             Disconnect
           </Button>
@@ -59,11 +78,12 @@ export function IntegrationItem({
           <Button
             variant="outline"
             size="sm"
-            disabled={connecting}
-            onClick={() => connect(() => onConnectedChange(true))}
+            aria-label={`Connect ${integration.name}`}
+            disabled={connect.isPending}
+            onClick={() => connect.mutate({ integrationId })}
           >
-            {connecting && <Spinner data-icon="inline-start" />}
-            {connecting ? "Connecting..." : "Connect"}
+            {connect.isPending && <Spinner data-icon="inline-start" />}
+            {connect.isPending ? "Connecting..." : "Connect"}
           </Button>
         )}
       </ItemActions>

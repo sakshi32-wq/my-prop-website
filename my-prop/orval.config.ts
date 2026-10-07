@@ -71,6 +71,14 @@ export default defineConfig({
               onMutations: ["createApiKey", "revokeApiKey"],
               invalidates: ["listApiKeys"],
             },
+            {
+              onMutations: [
+                "updateIntegration",
+                "connectIntegration",
+                "disconnectIntegration",
+              ],
+              invalidates: ["listIntegrations"],
+            },
           ],
         },
       },

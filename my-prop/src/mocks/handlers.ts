@@ -1,11 +1,13 @@
 import { apiKeyHandlers } from "./handlers/api-keys"
 import { campaignHandlers } from "./handlers/campaigns"
 import { domainHandlers } from "./handlers/domains"
+import { integrationHandlers } from "./handlers/integrations"
 import { leadHandlers } from "./handlers/leads"
 import { teamHandlers } from "./handlers/team"
 import { getApiKeysMock } from "@/api/generated/api-keys/api-keys.msw"
 import { getCampaignsMock } from "@/api/generated/campaigns/campaigns.msw"
 import { getDomainsMock } from "@/api/generated/domains/domains.msw"
+import { getIntegrationsMock } from "@/api/generated/integrations/integrations.msw"
 import { getLeadsMock } from "@/api/generated/leads/leads.msw"
 import { getTeamMock } from "@/api/generated/team/team.msw"
 
@@ -17,9 +19,11 @@ export const handlers = [
   ...teamHandlers,
   ...domainHandlers,
   ...apiKeyHandlers,
+  ...integrationHandlers,
   ...getLeadsMock(),
   ...getCampaignsMock(),
   ...getTeamMock(),
   ...getDomainsMock(),
   ...getApiKeysMock(),
+  ...getIntegrationsMock(),
 ]

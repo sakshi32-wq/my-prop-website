@@ -25,7 +25,7 @@ reference implementation for everything below.
 | 2 | team | `settings/team-tab.tsx` (`INITIAL_MEMBERS`) | ✅ done |
 | 3 | domains | `settings/domains-tab.tsx` (`INITIAL_DOMAINS`) | ✅ done |
 | 4 | api-keys | `settings/api-keys-card.tsx` (`INITIAL_KEYS`) | ✅ done |
-| 5 | integrations | `settings/integrations-tab.tsx` (`INITIAL_CONNECTED`) | ⬜ |
+| 5 | integrations | `settings/integrations-tab.tsx` (`INITIAL_CONNECTED`) | ✅ done |
 | 6 | websites | `routes/app.websites.tsx`, `dashboard/active-websites-card.tsx`, `builder/storage.ts` (localStorage) | ⬜ |
 | 7 | templates | `routes/app.templates.tsx` (`TEMPLATES`) | ⬜ |
 | 8 | profile | `settings/profile-info-card.tsx`, `notifications-card.tsx` | ⬜ |
@@ -107,3 +107,12 @@ Follow the Leads files as the template for each step.
   returned by `POST /api-keys`. The list returns a masked `preview`, so the
   Reveal/Hide and list-level Copy buttons were removed. The create dialog still shows
   and copies the new secret once. The mock stores only the preview.
+- **integrations:** ids are catalog slugs (`IntegrationId` enum), not UUIDs. Each
+  `IntegrationItem` owns its connect and disconnect mutations, so its pending state is
+  per item. Connect isn't optimistic; disconnect is, and its toast keeps the Undo
+  button, which reconnects. Settings are saved with `PATCH /integrations/{id}`, and
+  "Test Connection" calls `POST /integrations/{id}/test`. **Open question for the
+  backend:** settings, including credentials such as the Twilio token, are returned
+  in full by `GET /integrations`. A real API may want those fields write-only, with
+  the form showing a "saved" placeholder instead. `useSimulatedRequest` was removed
+  because nothing uses it any more.

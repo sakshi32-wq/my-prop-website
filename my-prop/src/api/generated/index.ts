@@ -1,5 +1,6 @@
 export * from "./api-keys/api-keys.ts"
 export * from "./campaigns/campaigns.ts"
 export * from "./domains/domains.ts"
+export * from "./integrations/integrations.ts"
 export * from "./leads/leads.ts"
 export * from "./team/team.ts"

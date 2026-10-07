@@ -20,6 +20,8 @@ tags:
     description: Custom domains that point to websites
   - name: api-keys
     description: Keys for calling the myprop.live API from other systems
+  - name: integrations
+    description: Third-party services the workspace connects to
 
 paths:
   /leads:
@@ -521,6 +523,109 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /integrations:
+    get:
+      operationId: listIntegrations
+      tags: [integrations]
+      summary: Connection state and settings of every available integration
+      responses:
+        "200":
+          description: One entry per integration in the catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Integration"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /integrations/{integrationId}:
+    parameters:
+      - $ref: "#/components/parameters/IntegrationId"
+    patch:
+      operationId: updateIntegration
+      tags: [integrations]
+      summary: Save a connected integration's settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegrationUpdate"
+      responses:
+        "200":
+          description: Updated integration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /integrations/{integrationId}/connect:
+    parameters:
+      - $ref: "#/components/parameters/IntegrationId"
+    post:
+      operationId: connectIntegration
+      tags: [integrations]
+      summary: Connect an integration
+      responses:
+        "200":
+          description: The connected integration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /integrations/{integrationId}/disconnect:
+    parameters:
+      - $ref: "#/components/parameters/IntegrationId"
+    post:
+      operationId: disconnectIntegration
+      tags: [integrations]
+      summary: Disconnect an integration (its settings are kept)
+      responses:
+        "200":
+          description: The disconnected integration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /integrations/{integrationId}/test:
+    parameters:
+      - $ref: "#/components/parameters/IntegrationId"
+    post:
+      operationId: testIntegration
+      tags: [integrations]
+      summary: Check that a connected integration responds with its saved settings
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationTestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -528,6 +633,12 @@ components:
       scheme: bearer
 
   parameters:
+    IntegrationId:
+      name: integrationId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/IntegrationId"
     ApiKeyId:
       name: apiKeyId
       in: path
@@ -1017,3 +1128,45 @@ components:
             secret:
               type: string
               description: The full key. Only returned when the key is created.
+
+    IntegrationId:
+      type: string
+      description: Catalog slug. Integrations are a fixed catalog, so these aren't UUIDs.
+      enum:
+        [whatsapp, gmail, outlook, twilio, googleCalendar, googleAnalytics, razorpay, stripe, salesforce, zoho]
+
+    IntegrationSettings:
+      type: object
+      description: Settings for one integration, keyed by field id.
+      additionalProperties:
+        type: string
+
+    Integration:
+      type: object
+      required: [id, connected, settings, connectedAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/IntegrationId"
+        connected:
+          type: boolean
+        settings:
+          $ref: "#/components/schemas/IntegrationSettings"
+        connectedAt:
+          type: [string, "null"]
+          format: date-time
+
+    IntegrationUpdate:
+      type: object
+      required: [settings]
+      properties:
+        settings:
+          $ref: "#/components/schemas/IntegrationSettings"
+
+    IntegrationTestResult:
+      type: object
+      required: [ok, message]
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
